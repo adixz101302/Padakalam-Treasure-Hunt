@@ -107,6 +107,9 @@ export default function PlayPage() {
           message: "🎯 TARGET LOCATION VERIFIED! OBJECT RECONNAISSANCE CLUE UNLOCKED.",
         });
         setLocationInput("");
+        setRoundData((prev) =>
+          prev ? { ...prev, isLocationVerified: true, currentStep: 1 } : prev
+        );
         fetchCurrentRound();
       } else {
         setFeedback({
@@ -324,16 +327,14 @@ export default function PlayPage() {
       if (data.isCorrect) {
         setFeedback({
           type: "success",
-          message: "MISSION ACCOMPLISHED! ADVANCING TO NEXT STAGE...",
+          message: "🎉 MISSION ACCOMPLISHED! ADVANCING TO NEXT STAGE...",
         });
         setAnswerInput("");
         setSubAnswers({});
+        setLoading(true);
 
-        // Refresh state after slight delay for dramatic feedback
-        setTimeout(() => {
-          fetchCurrentRound();
-          setFeedback(null);
-        }, 1200);
+        await fetchCurrentRound();
+        setFeedback(null);
       } else {
         setFeedback({
           type: "error",
@@ -355,11 +356,16 @@ export default function PlayPage() {
   if (loading || !roundData || !team) {
     return (
       <div className="min-h-screen bg-[#070A11] flex flex-col items-center justify-center p-6 text-center">
-        <Compass className="w-12 h-12 text-amber-400 animate-spin mb-4" />
-        <h2 className="text-lg font-mono font-bold text-white uppercase tracking-wider">
+        <div className="relative mb-6">
+          <div className="w-16 h-16 rounded-full border-4 border-amber-500/20 border-t-amber-400 animate-spin" />
+          <Compass className="w-8 h-8 text-amber-400 absolute inset-0 m-auto animate-pulse" />
+        </div>
+        <h2 className="text-lg font-mono font-black text-white uppercase tracking-widest animate-pulse">
           ESTABLISHING SATELLITE LINK...
         </h2>
-        <p className="text-xs font-mono text-slate-500 mt-2">Loading mission parameters</p>
+        <p className="text-xs font-mono text-amber-400/80 mt-2 font-semibold">
+          Syncing Padakalam Mission Parameters
+        </p>
       </div>
     );
   }
@@ -522,7 +528,14 @@ export default function PlayPage() {
                     disabled={verifyingLocation || !locationInput.trim()}
                     className="w-full py-3.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-400 font-mono font-black text-xs tracking-wider uppercase rounded-xl transition cursor-pointer disabled:opacity-40"
                   >
-                    {verifyingLocation ? "VERIFYING LOCATION..." : "VERIFY TARGET LOCATION"}
+                    {verifyingLocation ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <Compass className="w-4 h-4 text-amber-400 animate-spin" />
+                        <span>VERIFYING LOCATION...</span>
+                      </span>
+                    ) : (
+                      "VERIFY TARGET LOCATION"
+                    )}
                   </button>
                 </form>
               ) : (
@@ -627,7 +640,14 @@ export default function PlayPage() {
                     disabled={verifyingLocation || !locationInput.trim()}
                     className="w-full py-3.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-400 font-mono font-black text-xs tracking-wider uppercase rounded-xl transition cursor-pointer disabled:opacity-40"
                   >
-                    {verifyingLocation ? "VERIFYING LOCATION..." : "VERIFY TARGET LOCATION"}
+                    {verifyingLocation ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <Compass className="w-4 h-4 text-amber-400 animate-spin" />
+                        <span>VERIFYING LOCATION...</span>
+                      </span>
+                    ) : (
+                      "VERIFY TARGET LOCATION"
+                    )}
                   </button>
                 </form>
               ) : (
@@ -756,7 +776,14 @@ export default function PlayPage() {
                     disabled={verifyingLocation || !locationInput.trim()}
                     className="w-full py-3.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-400 font-mono font-black text-xs tracking-wider uppercase rounded-xl transition cursor-pointer disabled:opacity-40"
                   >
-                    {verifyingLocation ? "VERIFYING LOCATION..." : "VERIFY MORSE LOCATION"}
+                    {verifyingLocation ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <Compass className="w-4 h-4 text-amber-400 animate-spin" />
+                        <span>VERIFYING MORSE LOCATION...</span>
+                      </span>
+                    ) : (
+                      "VERIFY MORSE LOCATION"
+                    )}
                   </button>
                 </form>
               ) : (
@@ -959,7 +986,14 @@ export default function PlayPage() {
                     disabled={verifyingLocation || !locationInput.trim()}
                     className="w-full py-3.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-400 font-mono font-black text-xs tracking-wider uppercase rounded-xl transition cursor-pointer disabled:opacity-40"
                   >
-                    {verifyingLocation ? "VERIFYING ANOMALY..." : "VERIFY TARGET SECTOR"}
+                    {verifyingLocation ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <Compass className="w-4 h-4 text-amber-400 animate-spin" />
+                        <span>VERIFYING ANOMALY...</span>
+                      </span>
+                    ) : (
+                      "VERIFY TARGET SECTOR"
+                    )}
                   </button>
                 </form>
               ) : (
