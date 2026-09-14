@@ -870,9 +870,9 @@ export default function AdminDashboardPage() {
                   <thead className="bg-slate-950/80 border-b border-slate-800 text-slate-400 uppercase">
                     <tr>
                       <th className="p-4">Team ID / Name</th>
-                      <th className="p-4">Current Mission</th>
-                      <th className="p-4">Status Badge</th>
-                      <th className="p-4">Attempts</th>
+                      <th className="p-4">Current Stage</th>
+                      <th className="p-4">Status</th>
+                      <th className="p-4">Submission Guesses</th>
                       <th className="p-4">Last Activity</th>
                       <th className="p-4 text-right">Intervention Actions</th>
                     </tr>
@@ -887,10 +887,14 @@ export default function AdminDashboardPage() {
                           </div>
                         </td>
                         <td className="p-4">
-                          <span className="font-bold text-amber-400">
-                            {t.currentRound === 0 ? "Qualifier" : `Round 0${t.currentRound}`}
+                          <span className="inline-block px-2 py-0.5 bg-amber-500/10 border border-amber-500/30 text-amber-400 font-bold rounded-md text-xs">
+                            {t.currentRound === 0
+                              ? "Stage 0 (Qualifier)"
+                              : t.currentRound === 5
+                              ? "Stage 5 (Finale)"
+                              : `Stage 0${t.currentRound}`}
                           </span>
-                          <span className="block text-[10px] text-slate-500 uppercase">{t.state}</span>
+                          <span className="block text-[10px] text-slate-500 uppercase mt-1">{t.state}</span>
                         </td>
                         <td className="p-4">
                           {t.isDisqualified ? (
@@ -907,7 +911,10 @@ export default function AdminDashboardPage() {
                             </span>
                           )}
                         </td>
-                        <td className="p-4 text-slate-300 font-bold">{t.totalAttempts}</td>
+                        <td className="p-4">
+                          <span className="text-slate-200 font-bold">{t.totalAttempts}</span>
+                          <span className="block text-[10px] text-slate-500">attempts</span>
+                        </td>
                         <td className="p-4 text-slate-400 text-[11px]">
                           {t.lastActivityAt ? new Date(t.lastActivityAt).toLocaleTimeString() : "—"}
                         </td>
