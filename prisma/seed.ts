@@ -414,6 +414,46 @@ async function main() {
   ];
 
   for (const t of teamsData) {
+    const roundConfigsToCreate: any[] = [];
+
+    if (t.customQualifier) {
+      roundConfigsToCreate.push({
+        roundNumber: 0,
+        title: `Qualifier: ${t.teamName} Special Trial`,
+        clueType: "TEXT",
+        clueText: t.customQualifier.question,
+        acceptedAnswers: JSON.stringify(t.customQualifier.answers),
+        hint: "Solve your team's assigned riddle/problem.",
+      });
+    }
+
+    if (t.customR1) {
+      roundConfigsToCreate.push({
+        roundNumber: 1,
+        title: `Round 1: ${t.teamName} Special Target`,
+        clueType: "TEXT",
+        locationText: t.customR1.location,
+        locationAnswers: JSON.stringify(["auditorium", "main entrance", "archive", "library", "lab"]),
+        clueText: t.customR1.clue,
+        acceptedAnswers: JSON.stringify(t.customR1.answers),
+        hint: "Navigate to your specific sector.",
+      });
+    }
+
+    if (t.customR2) {
+      roundConfigsToCreate.push({
+        roundNumber: 2,
+        title: `Round 2: ${t.teamName} Numerical Cipher & Mirror Crypt`,
+        clueType: "NUMBER",
+        encodedNumbers: t.customR2.numbers,
+        locationAnswers: JSON.stringify(["PARK", "PORCH", "ATTIC", "GARDEN", "PLAZA", "BRIDGE", "TOWER", "ARCHIVE", "VAULT", "HALL"]),
+        clueText: t.customR2.clue,
+        clueTransform: "MIRRORED_JUMBLED",
+        acceptedAnswers: JSON.stringify(t.customR2.answers),
+        hint: "Decode the number indices into letters, then unscramble the mirrored clue.",
+      });
+    }
+
     const team = await prisma.team.create({
       data: {
         teamId: t.teamId,
@@ -425,56 +465,11 @@ async function main() {
             currentRound: 0,
           },
         },
+        roundConfigs: {
+          create: roundConfigsToCreate,
+        },
       },
     });
-
-    // Qualifier Override
-    if (t.customQualifier) {
-      await prisma.roundConfig.create({
-        data: {
-          teamId: t.teamId,
-          roundNumber: 0,
-          title: `Qualifier: ${t.teamName} Special Trial`,
-          clueType: "TEXT",
-          clueText: t.customQualifier.question,
-          acceptedAnswers: JSON.stringify(t.customQualifier.answers),
-          hint: "Solve your team's assigned riddle/problem.",
-        },
-      });
-    }
-
-    // Round 1 Override
-    if (t.customR1) {
-      await prisma.roundConfig.create({
-        data: {
-          teamId: t.teamId,
-          roundNumber: 1,
-          title: `Round 1: ${t.teamName} Special Target`,
-          clueType: "TEXT",
-          locationText: t.customR1.location,
-          clueText: t.customR1.clue,
-          acceptedAnswers: JSON.stringify(t.customR1.answers),
-          hint: "Navigate to your specific sector.",
-        },
-      });
-    }
-
-    // Round 2 Override
-    if (t.customR2) {
-      await prisma.roundConfig.create({
-        data: {
-          teamId: t.teamId,
-          roundNumber: 2,
-          title: `Round 2: ${t.teamName} Numerical Cipher & Mirror Crypt`,
-          clueType: "NUMBER",
-          encodedNumbers: t.customR2.numbers,
-          clueText: t.customR2.clue,
-          clueTransform: "MIRRORED_JUMBLED",
-          acceptedAnswers: JSON.stringify(t.customR2.answers),
-          hint: "Decode the number indices into letters, then unscramble the mirrored clue.",
-        },
-      });
-    }
 
     console.log(`✅ Created Team: ${team.teamId} - ${team.teamName}`);
   }
