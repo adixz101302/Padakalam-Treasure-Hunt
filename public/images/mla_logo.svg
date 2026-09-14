@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%">
+  <defs>
+    <linearGradient id="mlaGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#93C5FD" />
+      <stop offset="50%" stop-color="#3B82F6" />
+      <stop offset="100%" stop-color="#1E3A8A" />
+    </linearGradient>
+  </defs>
+  <circle cx="100" cy="100" r="95" fill="#0F172A" stroke="#475569" stroke-width="2" />
+  <circle cx="100" cy="100" r="85" fill="#0B132B" stroke="#1E293B" stroke-width="1" />
+  
+  <!-- Crest / Seal Pillar Design -->
+  <path d="M 70 135 L 130 135 L 125 145 L 75 145 Z" fill="#94A3B8" />
+  <rect x="80" y="85" width="8" height="50" fill="#CBD5E1" rx="2" />
+  <rect x="96" y="80" width="8" height="55" fill="#F8FAFC" rx="2" />
+  <rect x="112" y="85" width="8" height="50" fill="#CBD5E1" rx="2" />
+  <path d="M 65 80 Q 100 50 135 80 Z" fill="url(#mlaGrad)" stroke="#60A5FA" stroke-width="1.5" />
+  
+  <text x="100" y="172" fill="#E2E8F0" font-family="monospace" font-size="11" font-weight="bold" letter-spacing="2" text-anchor="middle">MLA LOGO</text>
+</svg>

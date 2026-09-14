@@ -1,0 +1,865 @@
+"use client";
+
+import React, { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import {
+  Compass,
+  MapPin,
+  HelpCircle,
+  Radio,
+  Binary,
+  Edit3,
+  CheckCircle2,
+  AlertTriangle,
+  LogOut,
+  Sparkles,
+  Key,
+  Flame,
+  Search,
+} from "lucide-react";
+import { ConnectionStatusBadge } from "@/components/participant/ConnectionStatusBadge";
+import { CountdownTimer } from "@/components/participant/CountdownTimer";
+import { VictoryModal } from "@/components/participant/VictoryModal";
+
+interface SubQuestionItem {
+  id: number;
+  question: string;
+}
+
+interface CurrentRoundData {
+  state: string;
+  roundNumber: number;
+  title: string;
+  clueType: string;
+  locationText?: string;
+  clueText?: string;
+  clueTransform?: string;
+  encodedNumbers?: string;
+  imagePath?: string;
+  subQuestions?: SubQuestionItem[];
+  attemptLimit?: number;
+  totalAttempts?: number;
+  penaltySeconds?: number;
+  serverTime?: string;
+  // Final round fields
+  isFinalist?: boolean;
+  position?: number;
+  totalFinalists?: number;
+  finalStartAt?: string;
+  instructions?: string;
+  isLive?: boolean;
+}
+
+interface TeamSession {
+  teamId: string;
+  teamName: string;
+  currentRound: number;
+}
+
+export default function PlayPage() {
+  const router = useRouter();
+  const [team, setTeam] = useState<TeamSession | null>(null);
+  const [roundData, setRoundData] = useState<CurrentRoundData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [answerInput, setAnswerInput] = useState("");
+  const [subAnswers, setSubAnswers] = useState<Record<number, string>>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [feedback, setFeedback] = useState<{
+    type: "success" | "error" | "info";
+    message: string;
+  } | null>(null);
+
+  // Round 3: per-question verification state
+  const [subChecking, setSubChecking] = useState<Record<number, boolean>>({});
+  const [subStatus, setSubStatus] = useState<Record<number, "idle" | "correct" | "wrong">>({});
+
+  const handleCheckSubQuestion = async (questionId: number) => {
+    const answer = subAnswers[questionId];
+    if (!answer?.trim()) return;
+
+    setSubChecking((prev) => ({ ...prev, [questionId]: true }));
+    try {
+      const res = await fetch("/api/game/check-sub", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          roundNumber: 3,
+          questionId,
+          answer: answer.trim(),
+        }),
+      });
+      const data = await res.json();
+      setSubStatus((prev) => ({
+        ...prev,
+        [questionId]: data.isCorrect ? "correct" : "wrong",
+      }));
+    } catch {
+      setSubStatus((prev) => ({ ...prev, [questionId]: "wrong" }));
+    } finally {
+      setSubChecking((prev) => ({ ...prev, [questionId]: false }));
+    }
+  };
+
+  // Modals state
+  const [winnerData, setWinnerData] = useState<{
+    teamId: string;
+    teamName: string;
+    position?: number;
+    declaredAt?: string;
+  } | null>(null);
+  const [isWinnerModalOpen, setIsWinnerModalOpen] = useState(false);
+
+  // Fetch current game state
+  const fetchCurrentRound = useCallback(async () => {
+    try {
+      const res = await fetch("/api/game/current");
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        if (res.status === 401) {
+          router.push("/");
+          return;
+        }
+        setFeedback({ type: "error", message: data.error || "Unable to load mission data." });
+        return;
+      }
+
+      if (data.isFinished && data.winner) {
+        setWinnerData(data.winner);
+        setIsWinnerModalOpen(true);
+      }
+
+      setRoundData(data);
+    } catch {
+      setFeedback({ type: "error", message: "Connection lost. Reconnecting..." });
+    } finally {
+      setLoading(false);
+    }
+  }, [router]);
+
+  // Fetch team session
+  useEffect(() => {
+    const fetchSession = async () => {
+      try {
+        const res = await fetch("/api/auth/session");
+        const data = await res.json();
+        if (data.success && data.role === "team") {
+          setTeam({
+            teamId: data.team.teamId,
+            teamName: data.team.teamName,
+            currentRound: data.team.progress?.currentRound ?? 0,
+          });
+          fetchCurrentRound();
+        } else {
+          router.push("/");
+        }
+      } catch {
+        router.push("/");
+      }
+    };
+
+    fetchSession();
+  }, [router, fetchCurrentRound]);
+
+  // Real-time Server-Sent Events Listener
+  useEffect(() => {
+    const eventSource = new EventSource("/api/sse");
+
+    eventSource.addEventListener("TEAM_PROGRESS", (e) => {
+      try {
+        const payload = JSON.parse(e.data);
+        if (team && payload.teamId === team.teamId) {
+          fetchCurrentRound();
+        }
+      } catch {}
+    });
+
+    eventSource.addEventListener("FINALIST_UPDATE", () => {
+      fetchCurrentRound();
+    });
+
+    eventSource.addEventListener("FINAL_COUNTDOWN", (e) => {
+      try {
+        const payload = JSON.parse(e.data);
+        if (payload.finalStartAt) {
+          fetchCurrentRound();
+        }
+      } catch {}
+    });
+
+    eventSource.addEventListener("WINNER_DECLARED", (e) => {
+      try {
+        const payload = JSON.parse(e.data);
+        setWinnerData(payload);
+        setIsWinnerModalOpen(true);
+      } catch {}
+    });
+
+    eventSource.addEventListener("EVENT_STATUS", (e) => {
+      try {
+        const payload = JSON.parse(e.data);
+        if (payload.status === "PAUSED") {
+          setFeedback({
+            type: "info",
+            message: "The hunt has been paused by organizers. Submissions are temporarily frozen.",
+          });
+        } else {
+          fetchCurrentRound();
+        }
+      } catch {}
+    });
+
+    return () => {
+      eventSource.close();
+    };
+  }, [team, fetchCurrentRound]);
+
+  const handleSubmitAnswer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!roundData) return;
+
+    // Check if Round 3 (subQuestions) or single answer
+    if (roundData.roundNumber === 3 && roundData.subQuestions) {
+      const answeredCount = Object.values(subAnswers).filter((v) => v.trim().length > 0).length;
+      if (answeredCount < roundData.subQuestions.length) {
+        setFeedback({
+          type: "error",
+          message: "Please answer all 4 physical location questions before submitting.",
+        });
+        return;
+      }
+    } else {
+      if (!answerInput.trim()) {
+        setFeedback({ type: "error", message: "Please enter your answer." });
+        return;
+      }
+    }
+
+    setSubmitting(true);
+    setFeedback(null);
+
+    try {
+      const res = await fetch("/api/game/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          roundNumber: roundData.roundNumber,
+          answer: answerInput.trim(),
+          subAnswers,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        setFeedback({
+          type: "error",
+          message: data.error || "Submission failed. Please try again.",
+        });
+        setSubmitting(false);
+        return;
+      }
+
+      if (data.isCorrect) {
+        setFeedback({
+          type: "success",
+          message: "MISSION ACCOMPLISHED! ADVANCING TO NEXT STAGE...",
+        });
+        setAnswerInput("");
+        setSubAnswers({});
+
+        // Refresh state after slight delay for dramatic feedback
+        setTimeout(() => {
+          fetchCurrentRound();
+          setFeedback(null);
+        }, 1200);
+      } else {
+        setFeedback({
+          type: "error",
+          message: data.message || "NOT QUITE. CHECK THE CLUE AND SURROUNDINGS CAREFULLY.",
+        });
+      }
+    } catch {
+      setFeedback({ type: "error", message: "Network submission error. Re-submitting..." });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/");
+  };
+
+  if (loading || !roundData || !team) {
+    return (
+      <div className="min-h-screen bg-[#070A11] flex flex-col items-center justify-center p-6 text-center">
+        <Compass className="w-12 h-12 text-amber-400 animate-spin mb-4" />
+        <h2 className="text-lg font-mono font-bold text-white uppercase tracking-wider">
+          ESTABLISHING SATELLITE LINK...
+        </h2>
+        <p className="text-xs font-mono text-slate-500 mt-2">Loading mission parameters</p>
+      </div>
+    );
+  }
+
+  const isQualifier = roundData.roundNumber === 0;
+  const isFinalWaiting = roundData.state === "FINAL_WAITING";
+  const isFinalActive = roundData.state === "FINAL_ACTIVE" || roundData.roundNumber === 5;
+
+  return (
+    <div className="min-h-screen bg-[#070A11] bg-grid-pattern text-slate-100 flex flex-col justify-between pb-8">
+      {/* Top Tactical HUD Header */}
+      <header className="sticky top-0 z-40 bg-[#0F172A]/90 backdrop-blur-md border-b border-slate-750 px-4 py-3 sm:px-6 shadow-md">
+        <div className="max-w-2xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-1.5 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+              <Compass className="w-5 h-5 text-amber-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono font-black text-amber-400 tracking-wider uppercase">
+                  {team.teamId}
+                </span>
+                <span className="text-xs text-slate-500">•</span>
+                <span className="text-xs font-mono text-slate-300 font-semibold truncate max-w-[140px] sm:max-w-[200px]">
+                  {team.teamName}
+                </span>
+              </div>
+              <span className="text-[10px] font-mono text-amber-400/80 block uppercase font-bold tracking-wider">
+                PADAKALAM 2.0 • ANVESHIPIN KANDETHUM
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            <ConnectionStatusBadge />
+            <button
+              onClick={handleLogout}
+              title="Logout"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Mission Container */}
+      <main className="max-w-xl w-full mx-auto px-4 py-6 flex-1 flex flex-col justify-center">
+        {/* Stage Badge & Title */}
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-400 font-mono text-xs uppercase tracking-widest mb-2 font-bold">
+            <Flame className="w-3.5 h-3.5" />
+            <span>
+              {isQualifier
+                ? "ENTRY QUALIFIER"
+                : isFinalWaiting || isFinalActive
+                ? "FINAL FIVE SHOWDOWN"
+                : `MISSION 0${roundData.roundNumber} / 05`}
+            </span>
+          </div>
+          <h1 className="text-xl sm:text-2xl font-mono font-black text-white uppercase tracking-tight">
+            {roundData.title}
+          </h1>
+        </div>
+
+        {/* Feedback Alert */}
+        {feedback && (
+          <div
+            className={`mb-6 p-4 rounded-2xl border font-mono text-xs flex items-start gap-3 animate-in slide-in-from-top-2 duration-200 ${
+              feedback.type === "success"
+                ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-400 glow-emerald"
+                : feedback.type === "info"
+                ? "bg-amber-500/10 border-amber-500/40 text-amber-400 glow-gold"
+                : "bg-rose-500/10 border-rose-500/40 text-rose-400 glow-crimson"
+            }`}
+          >
+            {feedback.type === "success" ? (
+              <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+            ) : (
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+            )}
+            <span className="font-bold tracking-wide">{feedback.message}</span>
+          </div>
+        )}
+
+        {/* ================= STAGE 0: QUALIFIER ================= */}
+        {isQualifier && (
+          <div className="bg-[#0F172A]/90 border border-slate-750 rounded-3xl p-6 sm:p-8 shadow-2xl glow-gold">
+            <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider mb-3">
+              <HelpCircle className="w-4 h-4" />
+              <span>THE GATEKEEPER'S QUESTION</span>
+            </div>
+            <p className="text-base sm:text-lg font-mono text-white mb-6 leading-relaxed font-semibold bg-slate-950/70 p-4 rounded-2xl border border-slate-800">
+              "{roundData.clueText || "Answer the qualifier question to unlock Round 1."}"
+            </p>
+
+            <form onSubmit={handleSubmitAnswer} className="space-y-4">
+              <div>
+                <label className="block text-xs font-mono text-slate-400 uppercase tracking-wider mb-2">
+                  YOUR ANSWER
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Type answer here..."
+                  value={answerInput}
+                  onChange={(e) => setAnswerInput(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl px-4 py-3.5 text-base font-mono text-white placeholder-slate-600 focus:outline-none transition"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-mono font-black text-sm tracking-wider uppercase rounded-xl transition shadow-lg disabled:opacity-50 cursor-pointer"
+              >
+                {submitting ? "VERIFYING ANSWER..." : "SUBMIT & UNLOCK ROUND 1"}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* ================= ROUND 1: DIRECT LOCATION ================= */}
+        {roundData.roundNumber === 1 && (
+          <div className="space-y-4">
+            {/* Physical Location Card */}
+            <div className="bg-gradient-to-r from-amber-500/10 via-slate-900 to-slate-900 border border-amber-500/30 rounded-3xl p-6 glow-gold">
+              <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider mb-2">
+                <MapPin className="w-4 h-4" />
+                <span>PHYSICAL TARGET DESTINATION</span>
+              </div>
+              <h2 className="text-lg sm:text-xl font-mono font-bold text-white tracking-wide">
+                {roundData.locationText || "Proceed to designated target coordinates."}
+              </h2>
+            </div>
+
+            {/* Object Clue Card */}
+            <div className="bg-[#0F172A]/90 border border-slate-750 rounded-3xl p-6 sm:p-8 shadow-2xl">
+              <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider mb-3">
+                <Search className="w-4 h-4" />
+                <span>OBJECT RECONNAISSANCE CLUE</span>
+              </div>
+              <p className="text-base font-mono text-slate-200 mb-6 bg-slate-950/70 p-4 rounded-2xl border border-slate-800">
+                "{roundData.clueText}"
+              </p>
+
+              <form onSubmit={handleSubmitAnswer} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-mono text-slate-400 uppercase tracking-wider mb-2">
+                    IDENTIFIED OBJECT NAME / CODE
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Enter object name..."
+                    value={answerInput}
+                    onChange={(e) => setAnswerInput(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl px-4 py-3.5 text-base font-mono text-white placeholder-slate-600 focus:outline-none transition"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-mono font-black text-sm tracking-wider uppercase rounded-xl transition shadow-lg disabled:opacity-50 cursor-pointer"
+                >
+                  {submitting ? "VALIDATING CODES..." : "SUBMIT OBJECT ANSWER"}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ================= ROUND 2: ENCODED LOCATION + MIRRORED CLUE ================= */}
+        {roundData.roundNumber === 2 && (
+          <div className="space-y-4">
+            {/* Number Encoded Location */}
+            <div className="bg-[#0F172A]/90 border border-amber-500/40 rounded-3xl p-6 glow-gold">
+              <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider">
+                  <Binary className="w-4 h-4" />
+                  <span>ENCODED LOCATION CIPHER</span>
+                </div>
+
+              <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-2xl text-center">
+                <span className="text-2xl sm:text-3xl font-mono font-black text-amber-400 tracking-widest">
+                  {roundData.encodedNumbers || "16 - 1 - 18 - 11"}
+                </span>
+                <span className="block text-[11px] font-mono text-slate-500 mt-2">
+                  Decode numerical indices (1=A, 2=B... 26=Z) to find destination
+                </span>
+              </div>
+            </div>
+
+            {/* Mirrored / Jumbled Clue */}
+            <div className="bg-[#0F172A]/90 border border-slate-750 rounded-3xl p-6 sm:p-8 shadow-2xl">
+              <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider mb-3">
+                <Edit3 className="w-4 h-4" />
+                <span>CRYPTIC OBJECT CLUE</span>
+              </div>
+
+              <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-2xl mb-6">
+                <div className="text-center">
+                  <p
+                    className={`text-base sm:text-lg font-mono font-bold text-slate-200 tracking-wider break-words ${
+                      roundData.clueTransform?.includes("MIRRORED") ? "transform-mirrored" : ""
+                    }`}
+                  >
+                    "{roundData.clueText}"
+                  </p>
+                </div>
+                <span className="block text-[10px] font-mono text-slate-500 mt-2 text-center">
+                  FORMAT: {roundData.clueTransform || "MIRRORED + JUMBLED"}
+                </span>
+              </div>
+
+              <form onSubmit={handleSubmitAnswer} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-mono text-slate-400 uppercase tracking-wider mb-2">
+                    DECODED OBJECT ANSWER
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Enter object found at location..."
+                    value={answerInput}
+                    onChange={(e) => setAnswerInput(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl px-4 py-3.5 text-base font-mono text-white placeholder-slate-600 focus:outline-none transition"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-mono font-black text-sm tracking-wider uppercase rounded-xl transition shadow-lg disabled:opacity-50 cursor-pointer"
+                >
+                  {submitting ? "VALIDATING RECON..." : "SUBMIT ROUND 2 ANSWER"}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ================= ROUND 3: MORSE CODE + 4 QUESTIONS ================= */}
+        {roundData.roundNumber === 3 && (
+          <div className="space-y-4">
+            <div className="bg-[#0F172A]/90 border border-amber-500/40 rounded-3xl p-6 glow-gold">
+              <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider mb-4">
+                <Radio className="w-4 h-4" />
+                <span>MORSE CODE TRANSMISSION</span>
+              </div>
+
+              {/* Morse text display — editable by admin per team */}
+              <div className="rounded-2xl bg-slate-950 border border-slate-750 p-4 sm:p-6">
+                {roundData.imagePath ? (
+                  // If admin uploaded an image, show it
+                  <img
+                    src={roundData.imagePath}
+                    alt="Morse Code Schematic"
+                    className="w-full h-auto object-contain rounded-xl max-h-56"
+                  />
+                ) : roundData.encodedNumbers ? (
+                  // Show admin-typed morse code as styled text
+                  <div className="text-center space-y-2">
+                    <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest mb-3">INCOMING TRANSMISSION</p>
+                    <p className="text-xl sm:text-2xl font-mono font-black text-amber-400 tracking-[0.25em] leading-relaxed break-all whitespace-pre-wrap">
+                      {roundData.encodedNumbers}
+                    </p>
+                    <p className="text-[10px] font-mono text-slate-600 mt-3">DECODE TO REVEAL YOUR PHYSICAL DESTINATION</p>
+                  </div>
+                ) : (
+                  <p className="text-sm font-mono text-slate-500 text-center">Awaiting morse transmission...</p>
+                )}
+              </div>
+            </div>
+
+            {/* 4 Physical Location Questions */}
+            <div className="bg-[#0F172A]/90 border border-slate-750 rounded-3xl p-6 sm:p-8 shadow-2xl">
+              <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider mb-2">
+                <MapPin className="w-4 h-4" />
+                <span>FOUR PHYSICAL RECONNAISSANCE QUESTIONS</span>
+              </div>
+              <p className="text-xs font-mono text-slate-400 mb-6">
+                Travel to the decoded Morse location. All 4 field questions must be answered correctly.
+              </p>
+
+              <form onSubmit={handleSubmitAnswer} className="space-y-5">
+                {roundData.subQuestions?.map((q, idx) => {
+                  const status = subStatus[q.id] ?? "idle";
+                  const isChecking = subChecking[q.id] ?? false;
+                  const inputVal = subAnswers[q.id] ?? "";
+
+                  return (
+                    <div
+                      key={q.id}
+                      className={`relative bg-slate-950/80 border p-4 rounded-2xl transition-all duration-300 ${
+                        status === "correct"
+                          ? "border-emerald-500/70 shadow-[0_0_12px_rgba(16,185,129,0.2)]"
+                          : status === "wrong"
+                          ? "border-rose-500/70 shadow-[0_0_12px_rgba(239,68,68,0.15)]"
+                          : "border-slate-800"
+                      }`}
+                    >
+                      {/* Question header */}
+                      <div className="flex items-start justify-between mb-3">
+                        <label className="block text-xs font-mono text-amber-400 font-bold uppercase leading-tight pr-2">
+                          QUESTION {idx + 1}: {q.question}
+                        </label>
+                        {/* Status badge */}
+                        {status === "correct" && (
+                          <span className="flex items-center gap-1 shrink-0 px-2.5 py-1 bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 font-mono text-[10px] font-black rounded-lg">
+                            <CheckCircle2 className="w-3 h-3" /> VERIFIED
+                          </span>
+                        )}
+                        {status === "wrong" && (
+                          <span className="flex items-center gap-1 shrink-0 px-2.5 py-1 bg-rose-500/20 border border-rose-500/50 text-rose-400 font-mono text-[10px] font-black rounded-lg">
+                            <AlertTriangle className="w-3 h-3" /> INCORRECT
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Input + CHECK button row */}
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder={`Answer ${idx + 1}...`}
+                          value={inputVal}
+                          onChange={(e) => {
+                            // Reset status when user edits after checking
+                            if (subStatus[q.id]) {
+                              setSubStatus((prev) => ({ ...prev, [q.id]: "idle" }));
+                            }
+                            setSubAnswers((prev) => ({ ...prev, [q.id]: e.target.value }));
+                          }}
+                          disabled={status === "correct"}
+                          className={`flex-1 bg-slate-900 border rounded-xl px-4 py-3 text-sm font-mono text-white placeholder-slate-600 focus:outline-none transition ${
+                            status === "correct"
+                              ? "border-emerald-600/50 text-emerald-300 cursor-not-allowed opacity-75"
+                              : status === "wrong"
+                              ? "border-rose-600/50 focus:border-rose-400"
+                              : "border-slate-700 focus:border-amber-400"
+                          }`}
+                        />
+                        <button
+                          type="button"
+                          disabled={!inputVal.trim() || isChecking || status === "correct"}
+                          onClick={() => handleCheckSubQuestion(q.id)}
+                          className={`shrink-0 px-4 py-2 rounded-xl font-mono font-black text-xs uppercase tracking-wider transition disabled:opacity-40 disabled:cursor-not-allowed ${
+                            status === "correct"
+                              ? "bg-emerald-600/30 text-emerald-400 cursor-default"
+                              : "bg-amber-500/20 border border-amber-500/50 hover:bg-amber-500/30 text-amber-400 cursor-pointer"
+                          }`}
+                        >
+                          {isChecking ? (
+                            <span className="animate-pulse">···</span>
+                          ) : status === "correct" ? (
+                            <CheckCircle2 className="w-4 h-4" />
+                          ) : (
+                            "CHECK"
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Inline feedback */}
+                      {status === "wrong" && (
+                        <p className="mt-2 text-[11px] font-mono text-rose-400">
+                          ✗ Not quite. Re-examine the physical location and try again.
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* Progress indicator */}
+                {(() => {
+                  const total = roundData.subQuestions?.length ?? 0;
+                  const passed = Object.values(subStatus).filter((s) => s === "correct").length;
+                  const allPassed = passed === total && total > 0;
+                  return (
+                    <>
+                      <div className="flex items-center gap-3 pt-1">
+                        <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-amber-500 to-emerald-500 transition-all duration-500"
+                            style={{ width: total > 0 ? `${(passed / total) * 100}%` : "0%" }}
+                          />
+                        </div>
+                        <span className="text-xs font-mono text-slate-400 shrink-0">
+                          {passed}/{total} VERIFIED
+                        </span>
+                      </div>
+
+                      {!allPassed && (
+                        <p className="text-[11px] font-mono text-slate-500 text-center">
+                          Verify all {total} questions individually before unlocking final submission.
+                        </p>
+                      )}
+
+                      <button
+                        type="submit"
+                        disabled={!allPassed || submitting}
+                        className={`w-full py-4 font-mono font-black text-sm tracking-wider uppercase rounded-xl transition shadow-lg ${
+                          allPassed
+                            ? "bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-slate-950 cursor-pointer shadow-emerald-900/40"
+                            : "bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700"
+                        }`}
+                      >
+                        {submitting ? (
+                          "FINALIZING ROUND 3..."
+                        ) : allPassed ? (
+                          "✓ ALL VERIFIED — UNLOCK ROUND 4"
+                        ) : (
+                          `🔒 LOCKED — ${total - passed} QUESTION${total - passed !== 1 ? "S" : ""} REMAINING`
+                        )}
+                      </button>
+                    </>
+                  );
+                })()}
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ================= ROUND 4: DECOY IMAGE & ANAGRAM ================= */}
+        {roundData.roundNumber === 4 && (
+          <div className="space-y-4">
+            <div className="bg-[#0F172A]/90 border border-amber-500/40 rounded-3xl p-6 glow-gold">
+              <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider mb-3">
+                <Sparkles className="w-4 h-4" />
+                <span>ARTIFACT ANOMALY ANALYSIS</span>
+              </div>
+
+              {roundData.imagePath && (
+                <div className="rounded-2xl overflow-hidden border border-slate-750 bg-slate-950 p-2 mb-4">
+                  <img
+                    src={roundData.imagePath}
+                    alt="Decoy Schematic"
+                    className="w-full h-auto object-contain rounded-xl max-h-64"
+                  />
+                </div>
+              )}
+
+              <p className="text-xs font-mono text-slate-300 bg-slate-950/80 p-4 rounded-xl border border-slate-800">
+                "{roundData.clueText}"
+              </p>
+            </div>
+
+            <div className="bg-[#0F172A]/90 border border-slate-750 rounded-3xl p-6 sm:p-8 shadow-2xl">
+              <form onSubmit={handleSubmitAnswer} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-mono text-slate-400 uppercase tracking-wider mb-2">
+                    ASSEMBLED MASTER WORD
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Enter final anagram word..."
+                    value={answerInput}
+                    onChange={(e) => setAnswerInput(e.target.value.toUpperCase())}
+                    className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl px-4 py-3.5 text-base font-mono font-bold tracking-widest text-white placeholder-slate-600 focus:outline-none transition uppercase"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-mono font-black text-sm tracking-wider uppercase rounded-xl transition shadow-lg disabled:opacity-50 cursor-pointer"
+                >
+                  {submitting ? "QUALIFYING WITH SERVER..." : "SUBMIT TO CLAIM FINAL FIVE SLOT"}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ================= FINALIST WAITING ROOM ================= */}
+        {isFinalWaiting && (
+          <div className="bg-gradient-to-b from-[#1E293B] via-[#0F172A] to-[#090D16] border-2 border-amber-400 rounded-3xl p-6 sm:p-8 shadow-2xl glow-gold-lg text-center space-y-6">
+            <div className="inline-flex p-4 bg-amber-500/20 rounded-full border border-amber-400/50">
+              <Sparkles className="w-10 h-10 text-amber-400 animate-spin-slow" />
+            </div>
+
+            <div>
+              <span className="text-xs font-mono text-amber-400 font-bold uppercase tracking-widest">
+                STAGE 4 CLEARED
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-mono font-black text-white uppercase tracking-tight mt-1">
+                YOU MADE THE FINAL FIVE!
+              </h2>
+            </div>
+
+            <div className="p-6 bg-slate-950/90 border border-amber-500/40 rounded-2xl glow-gold">
+              <span className="block text-xs font-mono text-slate-400 uppercase tracking-wider mb-1">
+                OFFICIAL FINALIST POSITION
+              </span>
+              <div className="font-mono font-black text-4xl sm:text-5xl text-amber-400 tracking-wider">
+                0{roundData.position} / 05
+              </div>
+            </div>
+
+            {/* Synchronized Countdown Clock */}
+            <CountdownTimer
+              targetDate={roundData.finalStartAt || null}
+              onComplete={fetchCurrentRound}
+            />
+          </div>
+        )}
+
+        {/* ================= SYNCHRONIZED FINAL ROUND (LIVE) ================= */}
+        {isFinalActive && (
+          <div className="bg-gradient-to-b from-[#1E293B] via-[#0F172A] to-[#090D16] border-2 border-amber-400 rounded-3xl p-6 sm:p-8 shadow-2xl glow-gold-lg space-y-6">
+            <div className="text-center">
+              <div className="inline-flex p-3 bg-amber-500/20 rounded-full border border-amber-400/50 mb-3">
+                <Key className="w-8 h-8 text-amber-400 animate-bounce" />
+              </div>
+              <span className="block text-xs font-mono text-amber-400 font-bold uppercase tracking-widest">
+                THE FINAL HUNT IS LIVE
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-mono font-black text-white uppercase tracking-tight mt-1">
+                {roundData.title}
+              </h2>
+            </div>
+
+            {roundData.locationText && (
+              <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-start gap-3">
+                <MapPin className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <span className="block text-xs font-mono text-amber-400 uppercase font-bold">
+                    PHYSICAL VAULT LOCATION
+                  </span>
+                  <span className="text-sm font-mono text-white font-bold">
+                    {roundData.locationText}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div className="p-6 bg-slate-950/90 border border-slate-750 rounded-2xl">
+              <span className="block text-xs font-mono text-amber-400 uppercase font-bold mb-2">
+                FINAL GOLDEN KEY CLUE
+              </span>
+              <p className="text-base sm:text-lg font-mono font-bold text-white leading-relaxed">
+                "{roundData.clueText}"
+              </p>
+            </div>
+
+            <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl text-center">
+              <p className="text-xs font-mono text-slate-300">
+                {roundData.instructions ||
+                  "Recover the physical key, unlock the treasure chest, and present the artifact to event organizers!"}
+              </p>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* Auxiliary Modals */}
+      <VictoryModal
+        winner={winnerData}
+        isOpen={isWinnerModalOpen}
+        onClose={() => setIsWinnerModalOpen(false)}
+      />
+    </div>
+  );
+}

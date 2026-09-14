@@ -1,0 +1,134 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Event {
+  id             String    @id @default(cuid())
+  name           String    @default("Anveshipin Kandethum 2026")
+  status         String    @default("ACTIVE") // CREATED, ACTIVE, PAUSED, FINISHED
+  isLocked       Boolean   @default(false)
+  finalStartedAt DateTime?
+  winnerTeamId   String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model Admin {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  role         String   @default("admin")
+  createdAt    DateTime @default(now())
+}
+
+model Team {
+  id             String              @id @default(cuid())
+  teamId         String              @unique // e.g. TEAM001
+  teamName       String
+  pin            String              @default("1234") // Optional quick PIN
+  isActive       Boolean             @default(true)
+  isDisqualified Boolean             @default(false)
+  createdAt      DateTime            @default(now())
+  progress       TeamProgress?
+  submissions    SubmissionAttempt[]
+  finalist       Finalist?
+  winner         Winner?
+  roundConfigs   RoundConfig[]
+}
+
+model TeamProgress {
+  id                   String    @id @default(cuid())
+  teamId               String    @unique
+  team                 Team      @relation(fields: [teamId], references: [teamId], onDelete: Cascade)
+  state                String    @default("QUALIFIER_ACTIVE") // FSM states
+  currentRound         Int       @default(0) // 0=Qualifier, 1..5
+  currentStep          Int       @default(0)
+  totalAttempts        Int       @default(0)
+  qualifierCompletedAt DateTime?
+  round1CompletedAt    DateTime?
+  round2CompletedAt    DateTime?
+  round3CompletedAt    DateTime?
+  round4CompletedAt    DateTime?
+  finalStartedAt       DateTime?
+  completedAt          DateTime?
+  lastActivityAt       DateTime  @default(now())
+  metadata             String? // JSON metadata (e.g. completed question IDs)
+  updatedAt            DateTime  @updatedAt
+}
+
+model RoundConfig {
+  id             String   @id @default(cuid())
+  teamId         String? // Null for default/template, or teamId for override
+  team           Team?    @relation(fields: [teamId], references: [teamId], onDelete: Cascade)
+  roundNumber    Int // 0=Qualifier, 1=R1, 2=R2, 3=R3, 4=R4, 5=Final
+  title          String
+  clueType       String   @default("TEXT") // TEXT, NUMBER, IMAGE, MORSE, DECOY
+  locationText   String?
+  clueText       String?
+  clueTransform  String   @default("NORMAL") // NORMAL, MIRRORED, JUMBLED, MIRRORED_JUMBLED
+  encodedNumbers String? // e.g. "16-1-18-11"
+  imagePath      String? // e.g. "/images/morse_r3.png"
+  acceptedAnswers String  @default("[]") // JSON string array of valid answers
+  subQuestions   String? // JSON string array of 4 questions for Round 3 or Qualifier items
+  attemptLimit   Int      @default(0) // 0 = unlimited
+  penaltySeconds Int      @default(0)
+  hint           String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([teamId, roundNumber])
+}
+
+model Finalist {
+  id          String   @id @default(cuid())
+  teamId      String   @unique
+  team        Team     @relation(fields: [teamId], references: [teamId], onDelete: Cascade)
+  position    Int      @unique // 1 to 5 strictly
+  qualifiedAt DateTime @default(now())
+}
+
+model FinalKey {
+  id        String   @id @default(cuid())
+  teamId    String?  @unique // Null for shared key, or teamId for team-specific key
+  keyCode   String
+  clueText  String
+  location  String
+  createdAt DateTime @default(now())
+}
+
+model SubmissionAttempt {
+  id          String   @id @default(cuid())
+  teamId      String
+  team        Team     @relation(fields: [teamId], references: [teamId], onDelete: Cascade)
+  roundNumber Int
+  stepNumber  Int      @default(0)
+  rawInput    String
+  isCorrect   Boolean
+  submittedAt DateTime @default(now())
+  requestId   String?
+  ipAddress   String?
+}
+
+model Winner {
+  id               String   @id @default(cuid())
+  teamId           String   @unique
+  team             Team     @relation(fields: [teamId], references: [teamId], onDelete: Cascade)
+  finalistPosition Int
+  declaredBy       String   @default("admin")
+  declaredAt       DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  eventType String // LOGIN, QUALIFIER_DONE, ROUND_DONE, FINALIST_QUALIFIED, WINNER_DECLARED, ADMIN_ACTION
+  teamId    String?
+  message   String
+  details   String? // JSON
+  createdAt DateTime @default(now())
+}

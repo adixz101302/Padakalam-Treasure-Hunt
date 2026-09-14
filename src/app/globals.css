@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-main: #070a11;
+  --bg-card: #0f172a;
+  --bg-card-hover: #1e293b;
+  --border-subtle: #334155;
+  --gold-primary: #f59e0b;
+  --gold-glow: rgba(245, 158, 11, 0.3);
+}
+
+body {
+  background-color: var(--bg-main);
+  color: #f1f5f9;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace, system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Tactical & Mystery Glow Utilities */
+.glow-gold {
+  box-shadow: 0 0 25px rgba(245, 158, 11, 0.25);
+}
+
+.glow-gold-lg {
+  box-shadow: 0 0 45px rgba(245, 158, 11, 0.4);
+}
+
+.glow-emerald {
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.25);
+}
+
+.glow-crimson {
+  box-shadow: 0 0 25px rgba(239, 68, 68, 0.25);
+}
+
+.border-cyber {
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+/* Mirrored Text Effect for Round 2 */
+.transform-mirrored {
+  transform: scaleX(-1);
+  display: inline-block;
+}
+
+/* Tactical Grid Background */
+.bg-grid-pattern {
+  background-image: radial-gradient(rgba(245, 158, 11, 0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
