@@ -6,7 +6,7 @@ import path from "path";
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("🌱 Starting database seeding for all rounds...");
+  console.log("🌱 Starting database seeding for 20 teams with custom Malayali clues & routes...");
 
   // Ensure public/images directory exists
   const imagesDir = path.join(process.cwd(), "public", "images");
@@ -14,496 +14,330 @@ async function main() {
     fs.mkdirSync(imagesDir, { recursive: true });
   }
 
-  // Create Morse Code SVG for Round 3
+  // Create SVG placeholders if needed
   const morseSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="100%" height="100%">
   <rect width="800" height="400" fill="#0B0F17" rx="16"/>
   <rect x="20" y="20" width="760" height="360" fill="none" stroke="#D97706" stroke-width="2" stroke-dasharray="6,6" rx="12"/>
   <text x="400" y="70" fill="#F59E0B" font-family="monospace" font-size="20" font-weight="bold" text-anchor="middle" letter-spacing="4">TOP SECRET // LOCATION CIPHER</text>
   <text x="400" y="105" fill="#64748B" font-family="sans-serif" font-size="14" text-anchor="middle">DECODE THE MORSE SEQUENCE TO DISCOVER YOUR PHYSICAL DESTINATION</text>
   <rect x="50" y="140" width="700" height="180" fill="#151D2A" rx="8" stroke="#334155" stroke-width="1"/>
-  
-  <!-- Line 1: CAMPUS ( -.-.  .-  --  .--.  ..-  ... ) -->
-  <text x="400" y="200" fill="#FBBF24" font-family="monospace" font-size="28" font-weight="bold" text-anchor="middle" letter-spacing="6">-.-.   .-   --   .--.   ..-   ...</text>
-  
-  <!-- Line 2: GARDEN ( --.  .-  .-.  -..  .  -. ) -->
-  <text x="400" y="270" fill="#FBBF24" font-family="monospace" font-size="28" font-weight="bold" text-anchor="middle" letter-spacing="6">--.   .-   .-.   -..   .   -.</text>
-  
-  <text x="400" y="355" fill="#94A3B8" font-family="monospace" font-size="12" text-anchor="middle">TARGET: CAMPUS GARDEN</text>
+  <text x="400" y="220" fill="#FBBF24" font-family="monospace" font-size="28" font-weight="bold" text-anchor="middle" letter-spacing="6">-.-.   .-   --   .--.   ..-   ...</text>
 </svg>`;
 
   fs.writeFileSync(path.join(imagesDir, "morse_r3.svg"), morseSvg);
 
-  // Create Decoy / Hidden Anagram SVG for Round 4
-  const decoySvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="100%" height="100%">
-  <defs>
-    <radialGradient id="bgGlow" cx="50%" cy="50%" r="60%">
-      <stop offset="0%" stop-color="#1E293B"/>
-      <stop offset="100%" stop-color="#090D16"/>
-    </radialGradient>
-  </defs>
-  <rect width="800" height="500" fill="url(#bgGlow)" rx="16"/>
-  <rect x="15" y="15" width="770" height="470" fill="none" stroke="#F59E0B" stroke-width="2" rx="12"/>
-  
-  <!-- Decorative Grid & Blueprint Elements -->
-  <line x1="100" y1="50" x2="700" y2="50" stroke="#334155" stroke-width="1"/>
-  <line x1="100" y1="450" x2="700" y2="450" stroke="#334155" stroke-width="1"/>
-  <circle cx="400" cy="250" r="140" fill="none" stroke="#D97706" stroke-width="1" stroke-dasharray="4,4"/>
-  <circle cx="400" cy="250" r="80" fill="none" stroke="#334155" stroke-width="1"/>
-  
-  <text x="400" y="60" fill="#F59E0B" font-family="monospace" font-size="18" font-weight="bold" text-anchor="middle" letter-spacing="3">SECTOR 04 // ANOMALY ANALYSIS</text>
-  <text x="400" y="90" fill="#94A3B8" font-family="sans-serif" font-size="13" text-anchor="middle">DO NOT TRUST THE LOCATION. SEARCH THE ARTIFACT ITSELF.</text>
-  
-  <!-- Hidden Anagram Letters subtly embedded across diagram coordinates -->
-  <!-- T -->
-  <g transform="translate(180, 180)">
-    <circle cx="0" cy="0" r="18" fill="#1E293B" stroke="#475569"/>
-    <text x="0" y="6" fill="#FBBF24" font-family="monospace" font-size="20" font-weight="bold" text-anchor="middle">T</text>
-  </g>
-  <!-- R -->
-  <g transform="translate(320, 150)">
-    <circle cx="0" cy="0" r="18" fill="#1E293B" stroke="#475569"/>
-    <text x="0" y="6" fill="#FBBF24" font-family="monospace" font-size="20" font-weight="bold" text-anchor="middle">R</text>
-  </g>
-  <!-- E -->
-  <g transform="translate(480, 150)">
-    <circle cx="0" cy="0" r="18" fill="#1E293B" stroke="#475569"/>
-    <text x="0" y="6" fill="#FBBF24" font-family="monospace" font-size="20" font-weight="bold" text-anchor="middle">E</text>
-  </g>
-  <!-- A -->
-  <g transform="translate(620, 180)">
-    <circle cx="0" cy="0" r="18" fill="#1E293B" stroke="#475569"/>
-    <text x="0" y="6" fill="#FBBF24" font-family="monospace" font-size="20" font-weight="bold" text-anchor="middle">A</text>
-  </g>
-  <!-- S -->
-  <g transform="translate(240, 320)">
-    <circle cx="0" cy="0" r="18" fill="#1E293B" stroke="#475569"/>
-    <text x="0" y="6" fill="#FBBF24" font-family="monospace" font-size="20" font-weight="bold" text-anchor="middle">S</text>
-  </g>
-  <!-- U -->
-  <g transform="translate(400, 360)">
-    <circle cx="0" cy="0" r="18" fill="#1E293B" stroke="#475569"/>
-    <text x="0" y="6" fill="#FBBF24" font-family="monospace" font-size="20" font-weight="bold" text-anchor="middle">U</text>
-  </g>
-  <!-- R -->
-  <g transform="translate(560, 320)">
-    <circle cx="0" cy="0" r="18" fill="#1E293B" stroke="#475569"/>
-    <text x="0" y="6" fill="#FBBF24" font-family="monospace" font-size="20" font-weight="bold" text-anchor="middle">R</text>
-  </g>
-  <!-- E -->
-  <g transform="translate(400, 250)">
-    <circle cx="0" cy="0" r="18" fill="#1E293B" stroke="#F59E0B" stroke-width="2"/>
-    <text x="0" y="6" fill="#FBBF24" font-family="monospace" font-size="20" font-weight="bold" text-anchor="middle">E</text>
-  </g>
-
-  <text x="400" y="440" fill="#64748B" font-family="monospace" font-size="12" text-anchor="middle">Letters scattered: [T, R, E, A, S, U, R, E] // Arrange into a single 8-letter master word</text>
-</svg>`;
-
-  fs.writeFileSync(path.join(imagesDir, "decoy_r4.svg"), decoySvg);
-
-  // Clear existing database
-  await prisma.winner.deleteMany();
-  await prisma.finalist.deleteMany();
-  await prisma.submissionAttempt.deleteMany();
-  await prisma.auditLog.deleteMany();
-  await prisma.roundConfig.deleteMany();
-  await prisma.finalKey.deleteMany();
-  await prisma.teamProgress.deleteMany();
-  await prisma.team.deleteMany();
-  await prisma.admin.deleteMany();
-  await prisma.event.deleteMany();
-
-  // Create Event Record
-  await prisma.event.create({
-    data: {
-      name: "ANVESHIPIN KANDETHUM | PADAKALAM 2.0",
+  // 1. Create or Update Master Event Status
+  await prisma.event.upsert({
+    where: { id: "master_event" },
+    create: {
+      id: "master_event",
+      name: "Anveshipin Kandethum 2026",
+      status: "ACTIVE",
+      isLocked: false,
+    },
+    update: {
       status: "ACTIVE",
       isLocked: false,
     },
   });
 
-  // Create Admin
-  const adminPassHash = await bcrypt.hash("admin123", 10);
-  await prisma.admin.create({
-    data: {
+  // 2. Create Default Admin Credentials (admin / admin123) if not present
+  const defaultAdminHash = await bcrypt.hash("admin123", 10);
+  await prisma.admin.upsert({
+    where: { username: "admin" },
+    create: {
       username: "admin",
-      passwordHash: adminPassHash,
+      passwordHash: defaultAdminHash,
       role: "admin",
     },
+    update: {},
   });
-  console.log("✅ Admin account created: admin / admin123");
 
-  // Create Master Round Configurations (Global Templates 0 to 5)
-  await prisma.roundConfig.createMany({
-    data: [
-      {
-        roundNumber: 0,
-        title: "Qualifier: The Gatekeeper's Trial",
-        clueType: "TEXT",
-        clueText: "What is 15 × 4?",
-        acceptedAnswers: JSON.stringify(["60", "sixty"]),
-        hint: "Multiply 15 by 4 to enter the hunt.",
-      },
-      {
-        roundNumber: 1,
-        title: "Round 1: Direct Location Reconnaissance",
-        clueType: "TEXT",
-        locationText: "Go to the Main Entrance of the Central Auditorium.",
-        locationAnswers: JSON.stringify(["auditorium", "central auditorium", "main entrance"]),
-        clueText: "Locate the primary apparatus designed to measure environmental temperature.",
-        acceptedAnswers: JSON.stringify(["thermometer", "temperature meter", "temperature gauge"]),
-        hint: "Look near the entrance foyer wall mounted sensors.",
-      },
-      {
-        roundNumber: 2,
-        title: "Round 2: Numerical Cipher & Mirror Crypt",
-        clueType: "NUMBER",
-        encodedNumbers: "16 - 1 - 18 - 11",
-        locationAnswers: JSON.stringify(["PARK", "park"]),
-        clueText: "Find the metallic sundial facing the northern fountain.",
-        clueTransform: "MIRRORED_JUMBLED",
-        acceptedAnswers: JSON.stringify(["sundial", "sun dial", "metallic sundial"]),
-        hint: "16=P, 1=A, 18=R, 11=K (PARK). Unjumble and reverse the clue words.",
-      },
-      {
-        roundNumber: 3,
-        title: "Round 3: Morse Code & Field Recon",
-        clueType: "MORSE",
-        encodedNumbers: "-.-. .- -- .--. ..- ...",
-        locationText: "Decoded location revealed by morse",
-        locationAnswers: JSON.stringify(["CAMPUS", "campus", "campus garden"]),
-        subQuestions: JSON.stringify([
-          {
-            id: 1,
-            question: "What text is inscribed on the wooden memorial bench?",
-            acceptedAnswers: ["founding batch", "batch 2020", "alumni batch", "alumni"],
-          },
-          {
-            id: 2,
-            question: "How many stone lanterns line the eastern flower path?",
-            acceptedAnswers: ["4", "four"],
-          },
-          {
-            id: 3,
-            question: "What color is the floral trellis entrance archway?",
-            acceptedAnswers: ["emerald", "green", "dark green"],
-          },
-          {
-            id: 4,
-            question: "What 4-digit number is engraved on the bronze fountain plaque?",
-            acceptedAnswers: ["2026", "1947", "9821"],
-          },
-        ]),
-        acceptedAnswers: JSON.stringify(["all_subquestions_valid"]),
-        hint: "Decode the morse to find the location, then inspect the surroundings.",
-      },
-      {
-        roundNumber: 4,
-        title: "Round 4: The Decoy Anomaly",
-        clueType: "DECOY",
-        imagePath: "/images/decoy_r4.svg",
-        locationAnswers: JSON.stringify(["SECTOR 04", "sector 4", "sector 04", "anomaly"]),
-        clueText: "Disregard the map coordinates. Extract the hidden glyphs embedded within the visual schematic and assemble the word.",
-        acceptedAnswers: JSON.stringify(["TREASURE", "treasure"]),
-        hint: "Anagram of the 8 embedded letters: T-R-E-A-S-U-R-E.",
-      },
-      {
-        roundNumber: 5,
-        title: "Final Round: The Golden Key Expedition",
-        clueType: "TEXT",
-        locationText: "Ascend to the Observatory Tower - Room 304",
-        clueText: "Search behind the celestial globe inside the vault compartment to recover the physical key to the treasure chest!",
-        acceptedAnswers: JSON.stringify(["GOLDEN_KEY_2026", "VICTORY"]),
-        hint: "Physically sprint to Room 304, grab the key, and unlock the chest before any other finalist!",
-      },
-    ],
-  });
-  console.log("✅ Master Round Configurations (0 to 5) created.");
+  // 3. Clear existing TeamProgress, SubmissionAttempts, and RoundConfigs for clean seed
+  console.log("🧹 Cleaning old progress & round configs...");
+  await prisma.submissionAttempt.deleteMany();
+  await prisma.teamProgress.deleteMany();
+  await prisma.finalist.deleteMany();
+  await prisma.winner.deleteMany();
+  await prisma.roundConfig.deleteMany();
+  await prisma.team.deleteMany();
 
-  // Teams Configuration with unique per-round puzzles
+  // 4. Detailed 20 Teams Configuration based on Handwritten Route Sheet & Malayalam Clues
   const teamsData = [
+    // TEAM 1: MB -> GDN -> Tank -> PRP
     {
       teamId: "TEAM001",
       teamName: "Alpha Vanguard",
-      pin: "1111",
-      customQualifier: {
-        question: "Solve: (24 / 3) + 12",
-        answers: ["20", "twenty"],
-      },
-      customR1: {
-        location: "Go to North Library Archive Section.",
-        clue: "Find the rotating celestial globe on the reference desk.",
-        answers: ["globe", "celestial globe"],
-      },
-      customR2: {
-        numbers: "16 - 1 - 18 - 11", // PARK
-        clue: "Find the metallic sundial facing the northern fountain.",
-        answers: ["sundial", "sun dial"],
-      },
+      r1: { loc: "Main Gate", ans: ["main gate", "mb", "gate"], clue: "Raavile varunnavar enne kaanum, Vaikunneram pokunnavar enne veendum kaanum. Njan vazhiyalla, paksha ella vazhiyudeyum thudakkam. Njan aaranu?" },
+      r2: { loc: "GD Naidu Block", ans: ["gdn", "gd naidu"], clue: "Oru vashath chalanam, mattoru vashath pakarpp, naduvil oru cheriya idavela. Onninu enna venam, onninu mashi, matt onninu choodu vellam." },
+      r3: { loc: "Library Tank", ans: ["tank", "libra tank", "library tank"], clue: "Oru kaalath enne kandhaal aalukal vazhi maattiyirunnirikkam. Innu enne kandhaal aalukal vazhi nirttivekkum. Orikkal ente munnil bhoomi thurannirunnu..." },
+      r4: { loc: "PRP Block", ans: ["prp", "prp block"], clue: "Njaan nishchalanayi nilkkum, paksha enne nokkunnaavan orikkalum nishchalanalla. Njaan samsaarikkaarilla, ennittum ellaavarodum ore kaaryam parayum." },
     },
+    // TEAM 2: Samsung -> ALM -> Balaji -> Darling
     {
       teamId: "TEAM002",
       teamName: "Shadow Strikers",
-      pin: "2222",
-      customQualifier: {
-        question: "What has a head and a tail, but no body?",
-        answers: ["coin", "a coin"],
-      },
-      customR1: {
-        location: "Go to Science Complex Lab 2.",
-        clue: "Find the triangular glass optical prism on the laser bench.",
-        answers: ["prism", "glass prism", "optical prism"],
-      },
-      customR2: {
-        numbers: "16 - 15 - 18 - 3 - 8", // PORCH
-        clue: "Locate the antique bronze bell mounted on the stone arch.",
-        answers: ["bell", "bronze bell"],
-      },
+      r1: { loc: "Samsung Hub", ans: ["samsung", "samsung lab"], clue: "Kayyil pidichaal lokam cheruthaakum, paksha njaan pusthakamalla. Kann thurakkaathe thanne enne nokkaam, shabdhamillaathe njaan marupadi parayum." },
+      r2: { loc: "ALM Basic Sciences", ans: ["alm", "dr alm"], clue: "Jeevan nilanirthaan raktham ozhukunnidath, rogam maaraan ariv valarunnidath. Vaidyathinte vazhiyiloode nadannupoya oraalude peru innum ivide nilanilkkunnu." },
+      r3: { loc: "Balaji Store", ans: ["balaji", "balaji store"], clue: "Oru vashath circuitukalum, maruvashath vishramathinte lokavum; randinumaidayil marannupoya cheriya kaaryangalude avasana pratheeksha." },
+      r4: { loc: "Darling Canteen", ans: ["darling", "darling canteen"], clue: "Enne kandethaan vishappu venam ennilla, paksha vishappullavarkku njan marakkan pattilla. Ente per oru bandham pole thonnikkum..." },
     },
+    // TEAM 3: SMV -> GDN -> Opticals -> Dominos
     {
       teamId: "TEAM003",
       teamName: "Phoenix Cyber",
-      pin: "3333",
-      customQualifier: {
-        question: "Solve: (9 × 8) - 12",
-        answers: ["60", "sixty"],
-      },
-      customR1: {
-        location: "Go to Quadrangle Fountain.",
-        clue: "Find the brass nautical compass mounted near the stone basin.",
-        answers: ["compass", "brass compass", "nautical compass"],
-      },
-      customR2: {
-        numbers: "1 - 20 - 20 - 9 - 3", // ATTIC
-        clue: "Discover the wooden ship helm stored in the corner vault.",
-        answers: ["helm", "ship helm", "wheel"],
-      },
+      r1: { loc: "SMV Block", ans: ["smv", "smv block"], clue: "Theneechaykku veedorukkaan vaasthushaasthriyude kai aavashyamilla. ‘Kalarippayattinte’ chuvadukal pole oro valavum krithyamaayidath..." },
+      r2: { loc: "GD Naidu Block", ans: ["gdn", "gd naidu"], clue: "Pusthakathil maathram arivilla, chila arivukal irumbilum vayarukalilum olikkum. Chinthakal yanthrangalayi maarunnidath, adutha rahasyam ninne kaathirikkunnu." },
+      r3: { loc: "Opticals", ans: ["opticals", "optical"], clue: "Ivide thirayendath oru vasthuvalla… oru kuravinte pariharam aanu. Kurav enthaanu ennu nee kandupidichaal, athinte veedu evide ennum nee kandupidikkum." },
+      r4: { loc: "Dominos", ans: ["dominos", "dominos pizza"], clue: "Pal arum onnich ethum, paksha avasaanam ororutharum swantham bhaagam thedum. Choodum sugandhavum vazhikaattikalaakum..." },
     },
+    // TEAM 4: Gandhi -> Dominos -> Lake -> Couples Corridor
     {
       teamId: "TEAM004",
       teamName: "Titan Force",
-      pin: "4444",
-      customQualifier: {
-        question: "What gets wetter the more it dries?",
-        answers: ["towel", "a towel"],
-      },
-      customR1: {
-        location: "Go to the Clocktower Base.",
-        clue: "Find the swinging brass pendulum inside the glass cabinet.",
-        answers: ["pendulum", "clock pendulum"],
-      },
-      customR2: {
-        numbers: "7 - 1 - 18 - 4 - 5 - 14", // GARDEN
-        clue: "Find the carved stone gargoyle guardian watching the path.",
-        answers: ["gargoyle", "stone gargoyle"],
-      },
+      r1: { loc: "Gandhi Block", ans: ["gandhi", "gandhi block"], clue: "Mathilukal enne adakkunnilla, avayude idayile shunyatha aanu enne azhakkunnath. Akathulla murikalekkal idayile idangal enne prathyekamakunnu." },
+      r2: { loc: "Dominos", ans: ["dominos", "dominos pizza"], clue: "Ente peril veezhchakalude shabdamundu, ente meshayil pankidalinte shabdavum. Randu nirangalkkidayil thudangunnoru parichayam..." },
+      r3: { loc: "VIT Lake", ans: ["lake", "vit lake"], clue: "Njan onnum sookshikkunnillennu thonnum, paksha aakaasham muthal marangal vare palathum ennil kaanam. Enikku swanthamaayi niramilla..." },
+      r4: { loc: "Couples Corridor", ans: ["couples corridor", "couples"], clue: "Class kazhinju pokunna vazhiyalla njan. Pakshe ivide varunnavar samayam kurachu marakkunnu. Destination alla pradhanam, koode nadakkunna aal aanu." },
     },
+    // TEAM 5: GDN -> Tank -> CBMR -> SJT petti kada
     {
       teamId: "TEAM005",
       teamName: "Valkyrie Recon",
-      pin: "5555",
-      customQualifier: {
-        question: "Solve: 50 - 18",
-        answers: ["32", "thirty two", "thirty-two"],
-      },
-      customR1: {
-        location: "Go to the Botanical Greenhouse.",
-        clue: "Find the humidity meter (hygrometer) hanging near the orchids.",
-        answers: ["hygrometer", "humidity meter"],
-      },
-      customR2: {
-        numbers: "16 - 12 - 1 - 26 - 1", // PLAZA
-        clue: "Locate the copper wind chime near the flagpole pedestal.",
-        answers: ["wind chime", "chime", "windchime"],
-      },
+      r1: { loc: "GD Naidu Block", ans: ["gdn", "gd naidu"], clue: "Yanthrangalkku jeevan nalkiya chinthakalude lokam, arivum kandupidithangalum koottukoodunnidam. ‘Oru perinte nizhal ivide vazhikaattiyaakum…’" },
+      r2: { loc: "Library Tank", ans: ["tank", "libra tank"], clue: "Yudhathinte ormma njan perunnu, pakshe oru vedium ini pottilla. Chakrangal urulaathe nishchalam, thuppaakkiyude muna ippol shaantham." },
+      r3: { loc: "CBMR Block", ans: ["cbmr", "cbmr block"], clue: "Shanthamaayi kidakkunna vellathinarikil puthuthaayi oru vazhi thurannu. Orikkal avide vazhiyillaayirunnu, inno munnottu maathram parayunnoru paatha." },
+      r4: { loc: "SJT Petti Kada", ans: ["petti kada", "sjt petti kada"], clue: "Kaal noottaandinte ormmakal sookshikkunnidathinarikil, valiyathonnum thedenda… cheriyoru idath pala aavashyangalkkum pariharam kittum." },
     },
+    // TEAM 6: CTS -> KC Lawn -> Basketball(tt) -> SJT
     {
       teamId: "TEAM006",
       teamName: "Nexus Rangers",
-      pin: "6666",
-      customQualifier: {
-        question: "What has keys but no locks, space but no room, you can enter but can't go outside?",
-        answers: ["keyboard", "a keyboard"],
-      },
-      customR1: {
-        location: "Go to Mechanical Workshop Bay A.",
-        clue: "Find the digital vernier caliper on the workbench.",
-        answers: ["caliper", "vernier caliper"],
-      },
-      customR2: {
-        numbers: "2 - 18 - 9 - 4 - 7 - 5", // BRIDGE
-        clue: "Find the brass padlock securing the chain barrier.",
-        answers: ["padlock", "lock", "brass padlock"],
-      },
+      r1: { loc: "CTS Lab", ans: ["cts", "cts lab"], clue: "Pusthakathil maathramalla, practical aayi padikkunna idam. Screeninte munnilum, machinesinte idayilum ideas jeevan nedunna sthalam." },
+      r2: { loc: "KC Lawn", ans: ["kc lawn", "kc"], clue: "Pachappin puthappaninju njan nilkkum, chuttum kaattin thaalavum kaazhchayude melavum. Enne kaanaan palarum varum..." },
+      r3: { loc: "TT Basketball Court", ans: ["basketball", "tt basketball"], clue: "Meenillatha vala, malsyathozhilaliyillatha kali, kaalukal odum, paksha lakshyam mukalilaanu." },
+      r4: { loc: "SJT Block", ans: ["sjt", "sjt block"], clue: "Oru vashath hostel jeevitham, maruvashath kali; idayil ninnu lokathod samsaarikkunna oru shabdam. Puthiya ayalkkaaran varunnathin mumbe ivan ivide undayirunnu." },
     },
+    // TEAM 7: CBMR(LH) -> CTS -> Foodys -> PRP Annex
     {
       teamId: "TEAM007",
       teamName: "Specter Unit",
-      pin: "7777",
-      customQualifier: {
-        question: "Solve: 12 × 12 - 44",
-        answers: ["100", "one hundred"],
-      },
-      customR1: {
-        location: "Go to Audio Studio Booth 3.",
-        clue: "Find the vintage condenser microphone on the boom arm.",
-        answers: ["microphone", "condenser microphone", "mic"],
-      },
-      customR2: {
-        numbers: "20 - 15 - 23 - 5 - 18", // TOWER
-        clue: "Locate the miniature brass spyglass in the observatory cabinet.",
-        answers: ["spyglass", "telescope", "brass spyglass"],
-      },
+      r1: { loc: "CBMR Block", ans: ["cbmr", "cbmr block"], clue: "Kaat vellathil cheriya varakal varaykkum, ivide cheriya chodyangal valiya utharangal aakum." },
+      r2: { loc: "CTS Lab", ans: ["cts", "cts lab"], clue: "Classukal kadannu, oru different lokathekku vaa. Screensum machinesum, ideasum koode cherunna idam." },
+      r3: { loc: "Foodys Canteen", ans: ["foodys", "foodys canteen"], clue: "Vediyalla, paksha kalaakaaranmar varum. Classsalla, paksha parisheelanam nadakkum." },
+      r4: { loc: "PRP Annex", ans: ["prp annex", "prpa"], clue: "Randu lokangalkkidayil njaan oru cheriya paalam. Oru vashath padanathinte thirakku, maruvashath roopangalkk janmam." },
     },
+    // TEAM 8: TT -> CS Hall -> KC Lawn -> Amazon
     {
       teamId: "TEAM008",
-      teamName: "Oracle Seekers",
-      pin: "8888",
-      customQualifier: {
-        question: "What can travel around the world while staying in a corner?",
-        answers: ["stamp", "a stamp", "postage stamp"],
-      },
-      customR1: {
-        location: "Go to Sports Complex Pavilion.",
-        clue: "Find the digital stopwatch on the referee desk.",
-        answers: ["stopwatch", "digital stopwatch"],
-      },
-      customR2: {
-        numbers: "1 - 18 - 3 - 8 - 9 - 22 - 5", // ARCHIVE
-        clue: "Find the leather bound ledger stamped with the year 1920.",
-        answers: ["ledger", "book", "leather ledger"],
-      },
+      teamName: "Vanguard Cyber",
+      r1: { loc: "Technology Tower (TT)", ans: ["tt", "technology tower"], clue: "Oru vashath ezhuthinte ayudhangal kaathirikkunnu, mattoru vashath vishappinte marupadiyum. Ente munnilulla vazhi saadhaarana vazhiyalla..." },
+      r2: { loc: "CS Hall", ans: ["cs hall", "chenna reddy hall"], clue: "Ayirangal irikkaan kazhiyunna oru sthalathinte aduthu, kurachu perude shabdam kaathirikkunna mattoru sthalam." },
+      r3: { loc: "KC Lawn", ans: ["kc lawn", "kc"], clue: "Enikku naalu chuvarukalilla, enkilum athirukal ariyaam. Vediyilla, enkilum pala kathakalum ivide arangerum." },
+      r4: { loc: "Amazon Counter", ans: ["amazon", "amazon locker"], clue: "Kaathirippu ente joli, kaimaattam ente avasaanam. Enikku labhikkunnath onnumentethaayi maarunnilla." },
     },
+    // TEAM 9: DC -> Avins -> KC -> Opticals
     {
       teamId: "TEAM009",
-      teamName: "Aegis Knights",
-      pin: "9999",
-      customQualifier: {
-        question: "Solve: (100 / 4) + 15",
-        answers: ["40", "forty"],
-      },
-      customR1: {
-        location: "Go to Art Gallery Corridor.",
-        clue: "Find the bronze sculpture of the winged Pegasus.",
-        answers: ["pegasus", "sculpture", "bronze sculpture"],
-      },
-      customR2: {
-        numbers: "22 - 1 - 21 - 12 - 20", // VAULT
-        clue: "Discover the heavy steel combination safe in the recess.",
-        answers: ["safe", "steel safe", "vault"],
-      },
+      teamName: "Apex Strikers",
+      r1: { loc: "DC Food Court", ans: ["dc", "dc food court"], clue: "Nagarathinte thirakkalla ivide, pachappinte nizhalaanu kaaval. Thalaykku mukalil aakaashamalla, pazhamayude melkkurayaanu." },
+      r2: { loc: "Avins Juice Shop", ans: ["avins", "avin"], clue: "Oru blockinte aduthu oru cheriya choodulla rahasyam. Athine kudikkaam, pakse athu vellam alla." },
+      r3: { loc: "KC Lawn", ans: ["kc lawn", "kc"], clue: "Swathanthryathinte arikil swapnangalkku chirakekiyum, arivinte munnil puthiya vazhikal thediyum…" },
+      r4: { loc: "Opticals", ans: ["opticals", "optical"], clue: "Kaanaan vendi enne thedaruthu. Kaanaan pattathath enthukondaanennu chinthikku." },
     },
+    // TEAM 10: KC Lawn -> TT -> Amazon -> Medical shop(LH)
     {
       teamId: "TEAM010",
-      teamName: "Vanguard Elite",
-      pin: "1010",
-      customQualifier: {
-        question: "The more of this there is, the less you see. What is it?",
-        answers: ["darkness", "the dark", "fog"],
-      },
-      customR1: {
-        location: "Go to Central Auditorium Balcony.",
-        clue: "Find the theatrical spotlight fitted with the amber optical gel.",
-        answers: ["spotlight", "amber gel", "light"],
-      },
-      customR2: {
-        numbers: "8 - 1 - 12 - 12", // HALL
-        clue: "Locate the ceremonial ceremonial gavel resting on the podium.",
-        answers: ["gavel", "wooden gavel"],
-      },
+      teamName: "Cipher Ops",
+      r1: { loc: "KC Lawn", ans: ["kc lawn", "kc"], clue: "Kaalukalkku vazhi venda, pachappinidayiloode nadakkaam. Chuttum kettidangal undenkilum, thalaykku mukalil aakaasham maathram." },
+      r2: { loc: "Technology Tower (TT)", ans: ["tt", "technology tower"], clue: "Irumbinte hridayamilla, ennaalum yanthrangalude kathakal ennil divasavum pirakkunnu." },
+      r3: { loc: "Amazon Counter", ans: ["amazon", "amazon locker"], clue: "Oru vasthuvinu yaathrayundu, oru manushyanu kaathirippundu. Eva randum ore nimishathil kandumuttunnidath njan undaakum." },
+      r4: { loc: "LH Medical Shop", ans: ["medical shop", "lh medical"], clue: "Hostel oru veedu aanenkil, njan athinte emergency shelf pole aanu. Ella divasavum enne aavashyamilla." },
+    },
+    // TEAM 11: SJT -> Basketball(tt) -> GDN -> Lassi Shop
+    {
+      teamId: "TEAM011",
+      teamName: "Omega Force",
+      r1: { loc: "SJT Block", ans: ["sjt", "sjt block"], clue: "Classinte vaathil adanjaal katha avide theerunnilla. Kurachu chuvadukalkkappuram chuvarukalillathoru vedi..." },
+      r2: { loc: "TT Basketball Court", ans: ["basketball", "tt basketball"], clue: "Kaikalil ninnu parakkum, paksha pakshiyalla. Valayilekku pokum, paksha meenalla." },
+      r3: { loc: "GD Naidu Block", ans: ["gdn", "gd naidu"], clue: "Ennangal aadyam varum, shabdangal pinne. Irumb idaykku swantham bhaasha samsaarikkum." },
+      r4: { loc: "Lassi Shop", ans: ["lassi shop", "lassi"], clue: "Arivinte lokathinarikil choodil ninnu aashwasam nalkunna cheriya ruchi sthalam." },
+    },
+    // TEAM 12: PRP -> Lake -> Nescafe -> Foodys
+    {
+      teamId: "TEAM012",
+      teamName: "Phantom Recon",
+      r1: { loc: "PRP Block", ans: ["prp", "prp block"], clue: "Muthu thedunnavan kadalil pokenda… Vellathinu pakaram ivide arivinte thirakal aanu." },
+      r2: { loc: "VIT Lake", ans: ["lake", "vit lake"], clue: "Aakaasham enne nokki nilkkunnilla, pakaram njan aakaashathe nokki nilkkunnu." },
+      r3: { loc: "Nescafe Library", ans: ["nescafe", "nescafe library"], clue: "Ravile enne thedunnavar undu, raathriyil enne ozhivakkunnavarum undu. Enikku oru manam undu, oru chood undu..." },
+      r4: { loc: "Foodys Canteen", ans: ["foodys", "foodys canteen"], clue: "Chila idangalkku vedhiyaakaan vedi venda, chila kathakalkku vaakkukalum venda." },
+    },
+    // TEAM 13: Balaji -> PRP Annex -> SJT Annex -> CBMR
+    {
+      teamId: "TEAM013",
+      teamName: "Aero Strikers",
+      r1: { loc: "Balaji Store", ans: ["balaji", "balaji store"], clue: "Arivu vaangaanaavilla, paksha athilekkulla pala vazhikalum ivide kittum." },
+      r2: { loc: "PRP Annex", ans: ["prp annex", "prpa"], clue: "Pazhayoru nagarathinte ormmayum, pulariye unarthunna oru manavum." },
+      r3: { loc: "SJT Annex", ans: ["sjt annex", "sjta"], clue: "Valiya kettidathinte nizhalil janichenkilum, athinte kathayil njaan veroru adhyayam." },
+      r4: { loc: "CBMR Block", ans: ["cbmr", "cbmr block"], clue: "Shareerathinte rahasyangal charchayaakunnidam, gaveshanathinte paathakal thurakkunnidam." },
+    },
+    // TEAM 14: Parking -> Foodys -> Dominos -> Balaji
+    {
+      teamId: "TEAM014",
+      teamName: "Storm Squad",
+      r1: { loc: "Campus Parking", ans: ["parking", "car parking"], clue: "Ellavarum ivide varum, pakse aarum ivide nilkkaan varilla. Chilar enne vittittu nadakkum..." },
+      r2: { loc: "Foodys Canteen", ans: ["foodys", "foodys canteen"], clue: "Oridam… Oraalkku parisheelanashaala, mattoraalkku vedi, mattoraalkku vishramasthalam..." },
+      r3: { loc: "Dominos", ans: ["dominos", "dominos pizza"], clue: "Orikkal veezhchayude kali, mattorikkal vishappinte vazhi." },
+      r4: { loc: "Balaji Store", ans: ["balaji", "balaji store"], clue: "Valiya kettidathinte nizhalil njan cheruthaanu. Pakshe valiya kaaryangal thudangaan venda pala cheriya kaaryangalum..." },
+    },
+    // TEAM 15: Couples corridor -> CBMR(LH) -> SJT -> TT
+    {
+      teamId: "TEAM015",
+      teamName: "Hyperion Vanguard",
+      r1: { loc: "Couples Corridor", ans: ["couples corridor", "couples"], clue: "Randu bindukkal undu. Ava thammilulla distance valare valuthalla. Pakshe ee randu bindukkal onnichal maathrame oru line poornamaakoo." },
+      r2: { loc: "CBMR Block", ans: ["cbmr", "cbmr block"], clue: "Chodyangal ivide pusthakathil maathram nilkkilla. Kandum kettum pareekshichum padikkunnidam." },
+      r3: { loc: "SJT Block", ans: ["sjt", "sjt block"], clue: "Thilangunna onnalla njan, ennaalum thilakkamulla oru peru enikkundu." },
+      r4: { loc: "Technology Tower (TT)", ans: ["tt", "technology tower"], clue: "Oru aksharam enne ormmippikkunnath vivarangalude lokam. Mattoru aksharam enne uyarathilekku kondupokunnu." },
+    },
+    // TEAM 16: Dominos -> Opticals -> Couples corridor -> Foodys
+    {
+      teamId: "TEAM016",
+      teamName: "Shadow Ops",
+      r1: { loc: "Dominos", ans: ["dominos", "dominos pizza"], clue: "Kaliyile kallukal veezhaanalla ivide. Onnin pinnaale onnaayi nirannu nilkkum..." },
+      r2: { loc: "Opticals", ans: ["opticals", "optical"], clue: "Akale ullath aduthakkanam ennu illa. Aduthullath vyakthamaakkanam ennu mathram." },
+      r3: { loc: "Couples Corridor", ans: ["couples corridor", "couples"], clue: "Oru equation pole chinthikku: 1 + 1 ≠ 2. Mathematics-il ithu thettaanu." },
+      r4: { loc: "Foodys Canteen", ans: ["foodys", "foodys canteen"], clue: "Chilar ivide kaal kondu kanakkukootum, chilar shabdam kondu ayalkkare ariyikkum..." },
+    },
+    // TEAM 17: Main Gate -> Balaji -> Greenos -> SJT Annex
+    {
+      teamId: "TEAM017",
+      teamName: "Iron Legion",
+      r1: { loc: "Main Gate", ans: ["main gate", "mb", "gate"], clue: "Raavile varunnavar enne kaanum, Vaikunneram pokunnavar enne veendum kaanum..." },
+      r2: { loc: "Balaji Store", ans: ["balaji", "balaji store"], clue: "Enne thedivarunnavar ore kaaryam chodikkilla. Oraalkku varikal venam, mattoraalkku varaykkaan..." },
+      r3: { loc: "Greenos", ans: ["greenos"], clue: "Pachayaya bhoomiyil, pachayaya manushyar, pachapidikunna kalakal prakadipikkunna idam." },
+      r4: { loc: "SJT Annex", ans: ["sjt annex", "sjta"], clue: "Valiyoru perinte arikil cheriyoru thudarchayaayi njaan." },
+    },
+    // TEAM 18: LH Medical shop -> Gandhi -> SJTA -> PRP
+    {
+      teamId: "TEAM018",
+      teamName: "Nova Syndicate",
+      r1: { loc: "LH Medical Shop", ans: ["medical shop", "lh medical"], clue: "Oru vazhi undu, oru vashath penkuttykalude lokam. Nadannu pokumbol kaanaan marakkunna oru cheriya idam." },
+      r2: { loc: "Gandhi Block", ans: ["gandhi", "gandhi block"], clue: "Chila frames-il kathakal undaakum, chila lines-il kettidangal." },
+      r3: { loc: "SJT Annex", ans: ["sjt annex", "sjta"], clue: "Moonnu sahodharangal ore kudumbathil. Oraalkku classukal, oraalkku aaghoshangal..." },
+      r4: { loc: "PRP Block", ans: ["prp", "prp block"], clue: "Ente perile aadya vaakku oru kadalinte sampath, randamatheth oru anveshanam..." },
+    },
+    // TEAM 19: Woodys -> SJT -> Gandhi -> TT Annex
+    {
+      teamId: "TEAM019",
+      teamName: "Titanium Cyber",
+      r1: { loc: "Woodys", ans: ["woodys"], clue: "Ente mel avakaasham parayaanaarum adhikakaalam nilkkarilla. Chilar varum, avarude paadukal maathram baakkivekkum..." },
+      r2: { loc: "SJT Block", ans: ["sjt", "sjt block"], clue: "Enne ariyunnavar ente peru churukki vilikkum. Pakshe aa churukkapperinu pinniloru pazhaya kathayundu..." },
+      r3: { loc: "Gandhi Block", ans: ["gandhi", "gandhi block"], clue: "Kaiyil aayudham illayirunnu, pakshe oru raajyathe maatti. Kallum cementum kondalla oru lokam paniyunnath..." },
+      r4: { loc: "TT Annex", ans: ["tt annex"], clue: "Oru veetinu chilappol oru muri adhikamaayi venam. Oru kathaykku chilappol oru adhyayam koodi venam..." },
+    },
+    // TEAM 20: Darling(gate) -> DC -> SJT petti kada -> Lake
+    {
+      teamId: "TEAM020",
+      teamName: "Zenith Recon",
+      r1: { loc: "Darling Canteen", ans: ["darling", "darling canteen"], clue: "Pranayathil njan oru vilipperu, campusil njan oru destination. Vishappu enne vazhi kaanikkum..." },
+      r2: { loc: "DC Food Court", ans: ["dc", "dc food court"], clue: "Classil kelkkaatha shabdangal, libraryil kittatha sugandhangal, pusthakathil kaanatha ruchikal..." },
+      r3: { loc: "SJT Petti Kada", ans: ["petti kada", "sjt petti kada"], clue: "Irupathiyanchinte aaghosham theertha oru smarakaminarikil, arivalla ivide vilkkunnath..." },
+      r4: { loc: "VIT Lake", ans: ["lake", "vit lake"], clue: "Oru nimisham polum nadakkathe orupadu kaazhchakal njan kaanum. Ente mukham maari maari varum..." },
     },
   ];
 
   for (const t of teamsData) {
-    const roundConfigsToCreate: any[] = [];
-
-    if (t.customQualifier) {
-      roundConfigsToCreate.push({
-        roundNumber: 0,
-        title: `Qualifier: ${t.teamName} Special Trial`,
-        clueType: "TEXT",
-        clueText: t.customQualifier.question,
-        acceptedAnswers: JSON.stringify(t.customQualifier.answers),
-        hint: "Solve your team's assigned riddle/problem.",
-      });
-    }
-
-    if (t.customR1) {
-      roundConfigsToCreate.push({
-        roundNumber: 1,
-        title: `Round 1: ${t.teamName} Special Target`,
-        clueType: "TEXT",
-        locationText: t.customR1.location,
-        locationAnswers: JSON.stringify(["auditorium", "main entrance", "archive", "library", "lab"]),
-        clueText: t.customR1.clue,
-        acceptedAnswers: JSON.stringify(t.customR1.answers),
-        hint: "Navigate to your specific sector.",
-      });
-    }
-
-    if (t.customR2) {
-      roundConfigsToCreate.push({
-        roundNumber: 2,
-        title: `Round 2: ${t.teamName} Numerical Cipher & Mirror Crypt`,
-        clueType: "NUMBER",
-        encodedNumbers: t.customR2.numbers,
-        locationAnswers: JSON.stringify(["PARK", "PORCH", "ATTIC", "GARDEN", "PLAZA", "BRIDGE", "TOWER", "ARCHIVE", "VAULT", "HALL"]),
-        clueText: t.customR2.clue,
-        clueTransform: "MIRRORED_JUMBLED",
-        acceptedAnswers: JSON.stringify(t.customR2.answers),
-        hint: "Decode the number indices into letters, then unscramble the mirrored clue.",
-      });
-    }
-
-    const team = await prisma.team.create({
-      data: {
+    // Upsert Team
+    const team = await prisma.team.upsert({
+      where: { teamId: t.teamId },
+      create: {
         teamId: t.teamId,
         teamName: t.teamName,
-        pin: t.pin,
+        isActive: true,
         progress: {
           create: {
             state: "QUALIFIER_ACTIVE",
             currentRound: 0,
+            currentStep: 0,
           },
         },
-        roundConfigs: {
-          create: roundConfigsToCreate,
-        },
+      },
+      update: {
+        teamName: t.teamName,
+        isActive: true,
       },
     });
 
-    console.log(`✅ Created Team: ${team.teamId} - ${team.teamName}`);
+    // Create Team Specific Round Configurations (Round 0 to 4)
+    await prisma.roundConfig.createMany({
+      data: [
+        // Round 0 (Qualifier)
+        {
+          teamId: team.teamId,
+          roundNumber: 0,
+          title: "Qualifier: Gatekeeper's Trial",
+          clueType: "TEXT",
+          clueText: "What is 15 × 4?",
+          acceptedAnswers: JSON.stringify(["60", "sixty"]),
+        },
+        // Round 1
+        {
+          teamId: team.teamId,
+          roundNumber: 1,
+          title: `Round 1: ${t.r1.loc}`,
+          clueType: "TEXT",
+          locationText: t.r1.loc,
+          locationAnswers: JSON.stringify(t.r1.ans),
+          clueText: t.r1.clue,
+          acceptedAnswers: JSON.stringify(["key", "code", "valid"]),
+        },
+        // Round 2
+        {
+          teamId: team.teamId,
+          roundNumber: 2,
+          title: `Round 2: ${t.r2.loc}`,
+          clueType: "TEXT",
+          locationText: t.r2.loc,
+          locationAnswers: JSON.stringify(t.r2.ans),
+          clueText: t.r2.clue,
+          acceptedAnswers: JSON.stringify(["key", "code", "valid"]),
+        },
+        // Round 3
+        {
+          teamId: team.teamId,
+          roundNumber: 3,
+          title: `Round 3: ${t.r3.loc}`,
+          clueType: "TEXT",
+          locationText: t.r3.loc,
+          locationAnswers: JSON.stringify(t.r3.ans),
+          clueText: t.r3.clue,
+          subQuestions: JSON.stringify([
+            { id: 1, question: "Inspect the primary physical monument/sign at this location.", acceptedAnswers: ["valid", "yes", "verified"] },
+            { id: 2, question: "Identify the engraved code or key number.", acceptedAnswers: ["2026", "101", "valid"] },
+          ]),
+          acceptedAnswers: JSON.stringify(["all_subquestions_valid"]),
+        },
+        // Round 4
+        {
+          teamId: team.teamId,
+          roundNumber: 4,
+          title: `Round 4: ${t.r4.loc}`,
+          clueType: "TEXT",
+          locationText: t.r4.loc,
+          locationAnswers: JSON.stringify(t.r4.ans),
+          clueText: t.r4.clue,
+          acceptedAnswers: JSON.stringify(["TREASURE", "treasure"]),
+        },
+      ],
+    });
   }
 
-  // Create Final Keys
-  await prisma.finalKey.createMany({
-    data: [
-      {
-        teamId: "TEAM001",
-        keyCode: "ALPHA_KEY_981",
-        clueText: "Alpha Final Key: Behind the antique telescope in Room 304",
-        location: "Observatory Telescope Compartment",
-      },
-      {
-        teamId: "TEAM002",
-        keyCode: "BETA_KEY_442",
-        clueText: "Beta Final Key: Beneath the star chart map table in Room 304",
-        location: "Map Table Vault",
-      },
-      {
-        teamId: null, // Shared fallback key
-        keyCode: "MASTER_GOLDEN_KEY_777",
-        clueText: "Master Golden Key: Inside the gilded iron lockbox on the central pedestal",
-        location: "Central Pedestal in Room 304",
-      },
-    ],
-  });
-
-  console.log("🌱 Database seeding completed successfully for all rounds!");
+  console.log("🎉 Successfully seeded 20 teams with custom Malayalam clues & unique paper destinations!");
 }
 
 main()
   .catch((e) => {
-    console.error("Seeding failed:", e);
+    console.error("Seeding error:", e);
     process.exit(1);
   })
   .finally(async () => {
