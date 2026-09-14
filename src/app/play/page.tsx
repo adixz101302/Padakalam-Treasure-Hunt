@@ -167,7 +167,9 @@ export default function PlayPage() {
   // Fetch current game state
   const fetchCurrentRound = useCallback(async () => {
     try {
-      const res = await fetch("/api/game/current");
+      const res = await fetch(`/api/game/current?t=${Date.now()}`, {
+        cache: "no-store",
+      });
       const data = await res.json();
 
       if (!res.ok || !data.success) {
@@ -196,7 +198,9 @@ export default function PlayPage() {
   useEffect(() => {
     const fetchSession = async () => {
       try {
-        const res = await fetch("/api/auth/session");
+        const res = await fetch(`/api/auth/session?t=${Date.now()}`, {
+          cache: "no-store",
+        });
         const data = await res.json();
         if (data.success && data.role === "team") {
           setTeam({

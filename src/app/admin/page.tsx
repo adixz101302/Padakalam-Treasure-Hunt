@@ -122,7 +122,9 @@ export default function AdminDashboardPage() {
   // Fetch Overview Data
   const fetchOverview = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/overview");
+      const res = await fetch(`/api/admin/overview?t=${Date.now()}`, {
+        cache: "no-store",
+      });
       const data = await res.json();
 
       if (data.success) {
@@ -145,7 +147,9 @@ export default function AdminDashboardPage() {
   // Fetch Puzzles
   const fetchPuzzles = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/puzzles");
+      const res = await fetch(`/api/admin/puzzles?t=${Date.now()}`, {
+        cache: "no-store",
+      });
       const data = await res.json();
       if (data.success) {
         setPuzzles(data.roundConfigs);
@@ -237,7 +241,9 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     const checkAdminSession = async () => {
       try {
-        const res = await fetch("/api/auth/session?role=admin");
+        const res = await fetch(`/api/auth/session?role=admin&t=${Date.now()}`, {
+          cache: "no-store",
+        });
         const data = await res.json();
         if (data.success && data.role === "admin") {
           setIsAdminAuth(true);
@@ -647,11 +653,14 @@ export default function AdminDashboardPage() {
 
         <div className="flex items-center gap-2 sm:gap-3">
           <button
-            onClick={fetchOverview}
+            onClick={() => {
+              setLoadingOverview(true);
+              fetchOverview();
+            }}
             title="Refresh Live Data"
-            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition"
+            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className={`w-4 h-4 ${loadingOverview ? "animate-spin text-amber-400" : ""}`} />
           </button>
           <button
             onClick={handleLogout}
