@@ -114,6 +114,7 @@ export default function AdminDashboardPage() {
   const [puzzleEncodedNumbers, setPuzzleEncodedNumbers] = useState("");
   const [puzzleImagePath, setPuzzleImagePath] = useState("");
   const [puzzleAcceptedAnswers, setPuzzleAcceptedAnswers] = useState("");
+  const [puzzleLocationAnswers, setPuzzleLocationAnswers] = useState("");
   const [puzzleSubQuestions, setPuzzleSubQuestions] = useState<any[]>([]);
   const [savingPuzzle, setSavingPuzzle] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -173,6 +174,7 @@ export default function AdminDashboardPage() {
     setPuzzleEncodedNumbers("");
     setPuzzleImagePath("");
     setPuzzleAcceptedAnswers("");
+    setPuzzleLocationAnswers("");
     setPuzzleSubQuestions([]);
   };
 
@@ -206,6 +208,7 @@ export default function AdminDashboardPage() {
     setPuzzleEncodedNumbers(config.encodedNumbers || "");
     setPuzzleImagePath(config.imagePath || "");
     setPuzzleAcceptedAnswers(Array.isArray(config.acceptedAnswers) ? config.acceptedAnswers.join(", ") : "");
+    setPuzzleLocationAnswers(Array.isArray(config.locationAnswers) ? config.locationAnswers.join(", ") : "");
     setPuzzleSubQuestions(config.subQuestions || []);
   };
 
@@ -418,6 +421,11 @@ export default function AdminDashboardPage() {
         .map((s) => s.trim())
         .filter(Boolean);
 
+      const locationArr = puzzleLocationAnswers
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
       const teamIdPayload = selectedTeamForEdit === "GLOBAL" ? null : selectedTeamForEdit;
 
       const res = await fetch("/api/admin/puzzles", {
@@ -433,6 +441,7 @@ export default function AdminDashboardPage() {
           encodedNumbers: puzzleEncodedNumbers,
           imagePath: puzzleImagePath,
           acceptedAnswers: acceptedArr,
+          locationAnswers: locationArr,
           subQuestions: selectedRoundForEdit === 3 ? puzzleSubQuestions : null,
         }),
       });
@@ -1124,10 +1133,31 @@ export default function AdminDashboardPage() {
                 />
               </div>
 
-              {/* Accepted Answers */}
+              {/* Step 1: Target Location Verification Answers (Rounds 1-4) */}
+              {[1, 2, 3, 4].includes(selectedRoundForEdit) && (
+                <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl space-y-2">
+                  <label className="block text-xs font-mono text-amber-400 font-bold uppercase">
+                    📍 STEP 1: TARGET LOCATION VERIFICATION ANSWERS (COMMA SEPARATED)
+                  </label>
+                  <p className="text-[10px] font-mono text-slate-400">
+                    Teams must answer one of these correctly to verify they reached the physical location before Step 2 (Object Clue) is unlocked.
+                  </p>
+                  <input
+                    type="text"
+                    value={puzzleLocationAnswers}
+                    onChange={(e) => setPuzzleLocationAnswers(e.target.value)}
+                    placeholder="e.g. Auditorium, Main Auditorium, Centenary Hall"
+                    className="w-full bg-slate-950 border border-amber-500/50 rounded-xl px-4 py-2.5 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+              )}
+
+              {/* Step 2 / Main Accepted Answers */}
               <div>
                 <label className="block text-xs font-mono text-slate-400 uppercase mb-2">
-                  ACCEPTED ANSWERS <span className="text-slate-600">(COMMA SEPARATED)</span>
+                  {selectedRoundForEdit === 0
+                    ? "QUALIFIER ANSWER (COMMA SEPARATED)"
+                    : "🔍 STEP 2: OBJECT RECONNAISSANCE / FINAL ANSWERS (COMMA SEPARATED)"}
                 </label>
                 <input
                   type="text"

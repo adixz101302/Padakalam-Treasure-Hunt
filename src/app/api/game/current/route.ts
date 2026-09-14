@@ -11,14 +11,19 @@ export async function GET(req: NextRequest) {
       return jsonError("Unauthorized. Please log in with your Team ID.", 401);
     }
 
-    const team = await withRetry(() => prisma.team.findUnique({
-      where: { teamId: session.teamId },
-      include: {
-        progress: true,
-        finalist: true,
-        winner: true,
-      },
-    }));
+    const [team, event] = await Promise.all([
+      withRetry(() =>
+        prisma.team.findUnique({
+          where: { teamId: session.teamId },
+          include: {
+            progress: true,
+            finalist: true,
+            winner: true,
+          },
+        })
+      ),
+      prisma.event.findFirst(),
+    ]);
 
     if (!team || !team.isActive) {
       return jsonError("Team not found or inactive.", 403);
@@ -36,7 +41,6 @@ export async function GET(req: NextRequest) {
       return jsonError("Progress record not initialized.", 500);
     }
 
-    const event = await prisma.event.findFirst();
     const currentRound = progress.currentRound;
 
     // Check if whole event is completed or winner declared
@@ -91,14 +95,14 @@ export async function GET(req: NextRequest) {
       }
 
       // Final round is LIVE
-      // Fetch Final Round Config (per-team or default)
-      const finalConfig =
-        (await prisma.roundConfig.findFirst({
-          where: { teamId: team.teamId, roundNumber: 5 },
-        })) ||
-        (await prisma.roundConfig.findFirst({
-          where: { teamId: null, roundNumber: 5 },
-        }));
+      // Fetch Final Round Config (per-team or default) in one query
+      const finalConfigs = await prisma.roundConfig.findMany({
+        where: {
+          roundNumber: 5,
+          OR: [{ teamId: team.teamId }, { teamId: null }],
+        },
+      });
+      const finalConfig = finalConfigs.find((c) => c.teamId === team.teamId) || finalConfigs.find((c) => c.teamId === null);
 
       // Fetch team-specific or shared final key assignment
       const keyInfo =
@@ -122,16 +126,15 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Fetch config for Rounds 0 to 4
-    let config = await prisma.roundConfig.findFirst({
-      where: { teamId: team.teamId, roundNumber: currentRound },
+    // Fetch config for Rounds 0 to 4 in a single query
+    const configs = await prisma.roundConfig.findMany({
+      where: {
+        roundNumber: currentRound,
+        OR: [{ teamId: team.teamId }, { teamId: null }],
+      },
     });
 
-    if (!config) {
-      config = await prisma.roundConfig.findFirst({
-        where: { teamId: null, roundNumber: currentRound },
-      });
-    }
+    const config = configs.find((c) => c.teamId === team.teamId) || configs.find((c) => c.teamId === null);
 
     if (!config) {
       return jsonError(`Round ${currentRound} configuration not found.`, 404);

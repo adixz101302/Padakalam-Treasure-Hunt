@@ -19,6 +19,7 @@ export async function GET(req: NextRequest) {
       roundConfigs: roundConfigs.map((c) => ({
         ...c,
         acceptedAnswers: JSON.parse(c.acceptedAnswers || "[]"),
+        locationAnswers: c.locationAnswers ? JSON.parse(c.locationAnswers) : [],
         subQuestions: c.subQuestions ? JSON.parse(c.subQuestions) : null,
       })),
       finalKeys,
@@ -44,6 +45,14 @@ export async function POST(req: NextRequest) {
 
     const acceptedAnswersArray = Array.isArray(body.acceptedAnswers)
       ? body.acceptedAnswers.filter((a: string) => typeof a === "string" && a.trim().length > 0)
+      : typeof body.acceptedAnswers === "string"
+      ? body.acceptedAnswers.split(",").map((a: string) => a.trim()).filter((a: string) => a.length > 0)
+      : [];
+
+    const locationAnswersArray = Array.isArray(body.locationAnswers)
+      ? body.locationAnswers.filter((a: string) => typeof a === "string" && a.trim().length > 0)
+      : typeof body.locationAnswers === "string"
+      ? body.locationAnswers.split(",").map((a: string) => a.trim()).filter((a: string) => a.length > 0)
       : [];
 
     const subQuestionsJson = body.subQuestions
@@ -68,6 +77,7 @@ export async function POST(req: NextRequest) {
           encodedNumbers: body.encodedNumbers || null,
           imagePath: body.imagePath || null,
           acceptedAnswers: JSON.stringify(acceptedAnswersArray),
+          locationAnswers: JSON.stringify(locationAnswersArray),
           subQuestions: subQuestionsJson,
           attemptLimit: Number(body.attemptLimit || 0),
           penaltySeconds: Number(body.penaltySeconds || 0),
@@ -87,6 +97,7 @@ export async function POST(req: NextRequest) {
           encodedNumbers: body.encodedNumbers || null,
           imagePath: body.imagePath || null,
           acceptedAnswers: JSON.stringify(acceptedAnswersArray),
+          locationAnswers: JSON.stringify(locationAnswersArray),
           subQuestions: subQuestionsJson,
           attemptLimit: Number(body.attemptLimit || 0),
           penaltySeconds: Number(body.penaltySeconds || 0),
@@ -106,6 +117,7 @@ export async function POST(req: NextRequest) {
       config: {
         ...config,
         acceptedAnswers: acceptedAnswersArray,
+        locationAnswers: locationAnswersArray,
         subQuestions: body.subQuestions,
       },
     });
