@@ -175,7 +175,12 @@ export default function AdminDashboardPage() {
     setPuzzleImagePath("");
     setPuzzleAcceptedAnswers("");
     setPuzzleLocationAnswers("");
-    setPuzzleSubQuestions([]);
+    setPuzzleSubQuestions([
+      { id: 1, question: "What text is inscribed on the wooden memorial bench?", acceptedAnswers: "founding batch, batch 2020, alumni batch, alumni" },
+      { id: 2, question: "How many stone lanterns line the eastern flower path?", acceptedAnswers: "4, four" },
+      { id: 3, question: "What color is the floral trellis entrance archway?", acceptedAnswers: "emerald, green, dark green" },
+      { id: 4, question: "What 4-digit number is engraved on the bronze fountain plaque?", acceptedAnswers: "2026, 1947, 9821" },
+    ]);
   };
 
   const handleSelectTeamOrRound = (roundNum: number, teamIdStr: string) => {
@@ -209,7 +214,23 @@ export default function AdminDashboardPage() {
     setPuzzleImagePath(config.imagePath || "");
     setPuzzleAcceptedAnswers(Array.isArray(config.acceptedAnswers) ? config.acceptedAnswers.join(", ") : "");
     setPuzzleLocationAnswers(Array.isArray(config.locationAnswers) ? config.locationAnswers.join(", ") : "");
-    setPuzzleSubQuestions(config.subQuestions || []);
+    
+    if (config.subQuestions && Array.isArray(config.subQuestions) && config.subQuestions.length > 0) {
+      setPuzzleSubQuestions(
+        config.subQuestions.map((q: any, idx: number) => ({
+          id: q.id || idx + 1,
+          question: q.question || "",
+          acceptedAnswers: Array.isArray(q.acceptedAnswers) ? q.acceptedAnswers.join(", ") : (q.acceptedAnswers || ""),
+        }))
+      );
+    } else {
+      setPuzzleSubQuestions([
+        { id: 1, question: "What text is inscribed on the wooden memorial bench?", acceptedAnswers: "founding batch, batch 2020, alumni batch, alumni" },
+        { id: 2, question: "How many stone lanterns line the eastern flower path?", acceptedAnswers: "4, four" },
+        { id: 3, question: "What color is the floral trellis entrance archway?", acceptedAnswers: "emerald, green, dark green" },
+        { id: 4, question: "What 4-digit number is engraved on the bronze fountain plaque?", acceptedAnswers: "2026, 1947, 9821" },
+      ]);
+    }
   };
 
   // Check Admin Session on mount
@@ -416,15 +437,28 @@ export default function AdminDashboardPage() {
   const handleSavePuzzle = async () => {
     setSavingPuzzle(true);
     try {
-      const acceptedArr = puzzleAcceptedAnswers
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
+      const acceptedArr = selectedRoundForEdit === 3
+        ? ["all_subquestions_valid"]
+        : puzzleAcceptedAnswers
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean);
 
       const locationArr = puzzleLocationAnswers
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean);
+
+      const formattedSubQuestions = selectedRoundForEdit === 3
+        ? puzzleSubQuestions.map((q, idx) => ({
+            id: q.id || idx + 1,
+            question: (q.question || "").trim(),
+            acceptedAnswers: (typeof q.acceptedAnswers === "string" ? q.acceptedAnswers : "")
+              .split(",")
+              .map((s: string) => s.trim())
+              .filter(Boolean),
+          }))
+        : null;
 
       const teamIdPayload = selectedTeamForEdit === "GLOBAL" ? null : selectedTeamForEdit;
 
@@ -442,7 +476,7 @@ export default function AdminDashboardPage() {
           imagePath: puzzleImagePath,
           acceptedAnswers: acceptedArr,
           locationAnswers: locationArr,
-          subQuestions: selectedRoundForEdit === 3 ? puzzleSubQuestions : null,
+          subQuestions: formattedSubQuestions,
         }),
       });
 
@@ -1152,21 +1186,105 @@ export default function AdminDashboardPage() {
                 </div>
               )}
 
-              {/* Step 2 / Main Accepted Answers */}
-              <div>
-                <label className="block text-xs font-mono text-slate-400 uppercase mb-2">
-                  {selectedRoundForEdit === 0
-                    ? "QUALIFIER ANSWER (COMMA SEPARATED)"
-                    : "🔍 STEP 2: OBJECT RECONNAISSANCE / FINAL ANSWERS (COMMA SEPARATED)"}
-                </label>
-                <input
-                  type="text"
-                  value={puzzleAcceptedAnswers}
-                  onChange={(e) => setPuzzleAcceptedAnswers(e.target.value)}
-                  placeholder="e.g. thermometer, temperature gauge, temp meter"
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
-                />
-              </div>
+              {/* Step 2 Answers: Sub-Questions Editor for Round 3 VS Standard Single Input for Other Rounds */}
+              {selectedRoundForEdit === 3 ? (
+                <div className="p-5 bg-amber-500/10 border border-amber-500/30 rounded-2xl space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="block text-xs font-mono text-amber-400 font-bold uppercase">
+                        📋 STEP 2: FIELD RECONNAISSANCE QUESTIONS & ANSWERS (ROUND 3)
+                      </label>
+                      <p className="text-[10px] font-mono text-slate-400 mt-0.5">
+                        Configure the physical location questions and accepted answers shown to teams after verifying Morse location.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPuzzleSubQuestions((prev) => [
+                          ...prev,
+                          { id: prev.length + 1, question: "", acceptedAnswers: "" },
+                        ]);
+                      }}
+                      className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-400 font-mono text-xs font-bold rounded-lg transition cursor-pointer"
+                    >
+                      + Add Question
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {puzzleSubQuestions.map((q, idx) => (
+                      <div key={idx} className="p-4 bg-slate-950/80 border border-slate-800 rounded-xl space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-mono font-bold text-amber-400">
+                            QUESTION {idx + 1}
+                          </span>
+                          {puzzleSubQuestions.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPuzzleSubQuestions((prev) => prev.filter((_, i) => i !== idx));
+                              }}
+                              className="text-[10px] font-mono text-rose-400 hover:text-rose-300 cursor-pointer"
+                            >
+                              ✕ Remove
+                            </button>
+                          )}
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-mono text-slate-400 uppercase mb-1">
+                            Question Prompt
+                          </label>
+                          <input
+                            type="text"
+                            value={q.question}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setPuzzleSubQuestions((prev) =>
+                                prev.map((item, i) => (i === idx ? { ...item, question: val } : item))
+                              );
+                            }}
+                            placeholder="e.g. What text is inscribed on the wooden memorial bench?"
+                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-mono text-slate-400 uppercase mb-1">
+                            Accepted Answers (comma-separated)
+                          </label>
+                          <input
+                            type="text"
+                            value={q.acceptedAnswers}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setPuzzleSubQuestions((prev) =>
+                                prev.map((item, i) => (i === idx ? { ...item, acceptedAnswers: val } : item))
+                              );
+                            }}
+                            placeholder="e.g. founding batch, batch 2020, alumni"
+                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-mono text-slate-400 uppercase mb-2">
+                    {selectedRoundForEdit === 0
+                      ? "QUALIFIER ANSWER (COMMA SEPARATED)"
+                      : "🔍 STEP 2: OBJECT RECONNAISSANCE / FINAL ANSWERS (COMMA SEPARATED)"}
+                  </label>
+                  <input
+                    type="text"
+                    value={puzzleAcceptedAnswers}
+                    onChange={(e) => setPuzzleAcceptedAnswers(e.target.value)}
+                    placeholder="e.g. thermometer, temperature gauge, temp meter"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}
