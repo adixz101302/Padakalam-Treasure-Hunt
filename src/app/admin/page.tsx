@@ -1139,18 +1139,18 @@ export default function AdminDashboardPage() {
                 )}
               </div>
 
-              {/* Location Text (R1, R3, R5) */}
-              {[1, 3, 5].includes(selectedRoundForEdit) && (
+              {/* Location Text (R1-R5) */}
+              {[1, 2, 3, 4, 5].includes(selectedRoundForEdit) && (
                 <div>
-                  <label className="block text-xs font-mono text-slate-400 uppercase mb-2">
-                    PHYSICAL LOCATION TARGET
+                  <label className="block text-xs font-mono text-amber-400 font-bold uppercase mb-2">
+                    📍 PHYSICAL LOCATION TARGET CLUE (MALAYALAM RIDDLE)
                   </label>
-                  <input
-                    type="text"
+                  <textarea
+                    rows={3}
                     value={puzzleLocation}
                     onChange={(e) => setPuzzleLocation(e.target.value)}
-                    placeholder="e.g. Go to Central Auditorium Main Entrance"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
+                    placeholder="Enter Malayalam riddle used to locate physical destination..."
+                    className="w-full bg-slate-950 border border-amber-500/40 rounded-xl p-3 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
                   />
                 </div>
               )}
@@ -1227,15 +1227,16 @@ export default function AdminDashboardPage() {
                 </div>
               )}
 
-              {/* Clue Text */}
+              {/* Step 2 Object Recon Clue Text */}
               <div>
                 <label className="block text-xs font-mono text-slate-400 uppercase mb-2">
-                  CLUE / QUESTION TEXT
+                  🔍 STEP 2: OBJECT RECONNAISSANCE CLUE / QUESTION TEXT (OPTIONAL)
                 </label>
                 <textarea
                   rows={3}
                   value={puzzleClue}
                   onChange={(e) => setPuzzleClue(e.target.value)}
+                  placeholder="Enter object clue unlocked after location verification (leave blank if not ready)..."
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
                 />
               </div>

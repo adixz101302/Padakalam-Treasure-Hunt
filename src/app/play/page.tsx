@@ -500,7 +500,7 @@ export default function PlayPage() {
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider">
                   <MapPin className="w-4 h-4" />
-                  <span>STEP 1: PHYSICAL TARGET DESTINATION</span>
+                  <span>STEP 1: PHYSICAL LOCATION TARGET CLUE</span>
                 </div>
                 {roundData.isLocationVerified && (
                   <span className="flex items-center gap-1 px-2.5 py-0.5 bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 font-mono text-[10px] font-bold rounded-full">
@@ -508,8 +508,8 @@ export default function PlayPage() {
                   </span>
                 )}
               </div>
-              <h2 className="text-base sm:text-lg font-mono font-bold text-white tracking-wide mb-4">
-                {roundData.locationText || "Proceed to designated target coordinates."}
+              <h2 className="text-sm sm:text-base font-mono font-semibold text-amber-200/90 tracking-wide mb-4 bg-slate-950/70 p-4 rounded-2xl border border-slate-800/80 leading-relaxed whitespace-pre-wrap">
+                "{roundData.locationText || "Solve the physical location riddle to find your target location."}"
               </h2>
 
               {!roundData.isLocationVerified ? (
@@ -556,8 +556,8 @@ export default function PlayPage() {
                   <Search className="w-4 h-4" />
                   <span>STEP 2: OBJECT RECONNAISSANCE CLUE</span>
                 </div>
-                <p className="text-base font-mono text-slate-200 mb-6 bg-slate-950/70 p-4 rounded-2xl border border-slate-800">
-                  "{roundData.clueText}"
+                <p className="text-sm font-mono text-slate-200 mb-6 bg-slate-950/70 p-4 rounded-2xl border border-slate-800 leading-relaxed whitespace-pre-wrap">
+                  {roundData.clueText ? `"${roundData.clueText}"` : "(Object reconnaissance clue will be updated soon)"}
                 </p>
 
                 <form onSubmit={handleSubmitAnswer} className="space-y-4">
