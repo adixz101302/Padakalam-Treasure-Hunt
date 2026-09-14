@@ -471,7 +471,9 @@ export default function PlayPage() {
               </button>
             </form>
           </div>
-             {/* ================= ROUND 1: DIRECT LOCATION ================= */}
+        )}
+
+        {/* ================= ROUND 1: DIRECT LOCATION ================= */}
         {roundData.roundNumber === 1 && (
           <div className="space-y-4">
             {/* Physical Location Card (Step 1) */}
@@ -1001,7 +1003,6 @@ export default function PlayPage() {
               </div>
             )}
           </div>
-        )}      </div>
         )}
 
         {/* ================= FINALIST WAITING ROOM ================= */}
