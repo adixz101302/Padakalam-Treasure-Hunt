@@ -22,6 +22,7 @@ import {
   Clock,
   ArrowUpRight,
   Eye,
+  Key,
 } from "lucide-react";
 
 interface AdminStats {
@@ -102,6 +103,13 @@ export default function AdminDashboardPage() {
 
   const [isResetEventModalOpen, setIsResetEventModalOpen] = useState(false);
   const [resetConfirmInput, setResetConfirmInput] = useState("");
+
+  // Change Admin Credentials Modal State
+  const [isChangeCredsModalOpen, setIsChangeCredsModalOpen] = useState(false);
+  const [currentAdminPassword, setCurrentAdminPassword] = useState("");
+  const [newAdminUsername, setNewAdminUsername] = useState("");
+  const [newAdminPassword, setNewAdminPassword] = useState("");
+  const [updatingCreds, setUpdatingCreds] = useState(false);
 
   // Puzzle Editor State
   const [puzzles, setPuzzles] = useState<any[]>([]);
@@ -427,6 +435,38 @@ export default function AdminDashboardPage() {
   };
 
   // Declare Winner
+  // Change Admin Credentials Handler
+  const handleChangeCredentials = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAdminUsername.trim() || !newAdminPassword.trim()) return;
+
+    setUpdatingCreds(true);
+    try {
+      const res = await fetch("/api/admin/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentPassword: currentAdminPassword,
+          newUsername: newAdminUsername.trim(),
+          newPassword: newAdminPassword.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`Admin credentials updated successfully!\nNew Username: ${newAdminUsername}`);
+        setIsChangeCredsModalOpen(false);
+        setCurrentAdminPassword("");
+        setNewAdminPassword("");
+      } else {
+        alert(data.error || "Failed to update credentials.");
+      }
+    } catch {
+      alert("Error updating credentials.");
+    } finally {
+      setUpdatingCreds(false);
+    }
+  };
+
   const handleDeclareWinner = async () => {
     if (!selectedWinnerTeamId) return;
 
@@ -661,6 +701,14 @@ export default function AdminDashboardPage() {
             className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer"
           >
             <RefreshCw className={`w-4 h-4 ${loadingOverview ? "animate-spin text-amber-400" : ""}`} />
+          </button>
+          <button
+            onClick={() => setIsChangeCredsModalOpen(true)}
+            title="Change Admin Credentials"
+            className="flex items-center gap-1.5 px-3 py-2 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-amber-400 font-mono text-xs rounded-xl uppercase transition cursor-pointer"
+          >
+            <Key className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Credentials</span>
           </button>
           <button
             onClick={handleLogout}
@@ -1522,6 +1570,87 @@ export default function AdminDashboardPage() {
                 Confirm Reset
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODAL: CHANGE ADMIN CREDENTIALS ================= */}
+      {isChangeCredsModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-[#0F172A] border border-amber-500/40 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl glow-gold">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2 text-amber-400 font-mono text-sm font-bold uppercase">
+                <Key className="w-4 h-4" />
+                <span>Change Admin Credentials</span>
+              </div>
+              <button
+                onClick={() => setIsChangeCredsModalOpen(false)}
+                className="text-slate-400 hover:text-white font-mono text-base"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleChangeCredentials} className="space-y-4">
+              <div>
+                <label className="block text-xs font-mono text-slate-400 uppercase mb-1">
+                  CURRENT PASSWORD <span className="text-slate-600 font-normal">(Optional if default)</span>
+                </label>
+                <input
+                  type="password"
+                  placeholder="Enter current password..."
+                  value={currentAdminPassword}
+                  onChange={(e) => setCurrentAdminPassword(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-slate-400 uppercase mb-1">
+                  NEW ADMIN USERNAME
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. game_admin"
+                  value={newAdminUsername}
+                  onChange={(e) => setNewAdminUsername(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-slate-400 uppercase mb-1">
+                  NEW ADMIN PASSWORD
+                </label>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  placeholder="At least 6 characters..."
+                  value={newAdminPassword}
+                  onChange={(e) => setNewAdminPassword(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsChangeCredsModalOpen(false)}
+                  className="flex-1 py-2.5 bg-slate-800 text-slate-300 font-mono text-xs rounded-xl hover:bg-slate-700 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={updatingCreds || !newAdminUsername.trim() || !newAdminPassword.trim()}
+                  className="flex-1 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-mono font-bold text-xs uppercase rounded-xl transition cursor-pointer disabled:opacity-40"
+                >
+                  {updatingCreds ? "Updating..." : "Save Credentials"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
