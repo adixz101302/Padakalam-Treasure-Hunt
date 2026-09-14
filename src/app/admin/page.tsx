@@ -23,6 +23,8 @@ import {
   ArrowUpRight,
   Eye,
   Key,
+  MapPin,
+  Search,
 } from "lucide-react";
 
 interface AdminStats {
