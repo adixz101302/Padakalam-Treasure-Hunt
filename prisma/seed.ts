@@ -148,6 +148,7 @@ async function main() {
         title: "Round 1: Direct Location Reconnaissance",
         clueType: "TEXT",
         locationText: "Go to the Main Entrance of the Central Auditorium.",
+        locationAnswers: JSON.stringify(["auditorium", "central auditorium", "main entrance"]),
         clueText: "Locate the primary apparatus designed to measure environmental temperature.",
         acceptedAnswers: JSON.stringify(["thermometer", "temperature meter", "temperature gauge"]),
         hint: "Look near the entrance foyer wall mounted sensors.",
@@ -157,6 +158,7 @@ async function main() {
         title: "Round 2: Numerical Cipher & Mirror Crypt",
         clueType: "NUMBER",
         encodedNumbers: "16 - 1 - 18 - 11",
+        locationAnswers: JSON.stringify(["PARK", "park"]),
         clueText: "Find the metallic sundial facing the northern fountain.",
         clueTransform: "MIRRORED_JUMBLED",
         acceptedAnswers: JSON.stringify(["sundial", "sun dial", "metallic sundial"]),
@@ -166,10 +168,9 @@ async function main() {
         roundNumber: 3,
         title: "Round 3: Morse Code & Field Recon",
         clueType: "MORSE",
-        // Admin will type the team-specific morse code in the admin panel.
-        // encodedNumbers holds the morse dots/dashes shown to participants.
         encodedNumbers: "-.-. .- -- .--. ..- ...",
         locationText: "Decoded location revealed by morse",
+        locationAnswers: JSON.stringify(["CAMPUS", "campus", "campus garden"]),
         subQuestions: JSON.stringify([
           {
             id: 1,
@@ -200,6 +201,7 @@ async function main() {
         title: "Round 4: The Decoy Anomaly",
         clueType: "DECOY",
         imagePath: "/images/decoy_r4.svg",
+        locationAnswers: JSON.stringify(["SECTOR 04", "sector 4", "sector 04", "anomaly"]),
         clueText: "Disregard the map coordinates. Extract the hidden glyphs embedded within the visual schematic and assemble the word.",
         acceptedAnswers: JSON.stringify(["TREASURE", "treasure"]),
         hint: "Anagram of the 8 embedded letters: T-R-E-A-S-U-R-E.",

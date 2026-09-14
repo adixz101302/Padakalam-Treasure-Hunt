@@ -159,9 +159,13 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    const isLocationVerified = currentRound === 0 || progress.currentStep >= 1;
+
     return jsonSuccess({
       state: progress.state,
       roundNumber: currentRound,
+      currentStep: progress.currentStep,
+      isLocationVerified,
       title: config.title,
       clueType: config.clueType,
       locationText: config.locationText,

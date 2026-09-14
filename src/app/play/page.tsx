@@ -29,6 +29,8 @@ interface SubQuestionItem {
 interface CurrentRoundData {
   state: string;
   roundNumber: number;
+  currentStep?: number;
+  isLocationVerified?: boolean;
   title: string;
   clueType: string;
   locationText?: string;
@@ -62,12 +64,62 @@ export default function PlayPage() {
   const [roundData, setRoundData] = useState<CurrentRoundData | null>(null);
   const [loading, setLoading] = useState(true);
   const [answerInput, setAnswerInput] = useState("");
+  const [locationInput, setLocationInput] = useState("");
+  const [verifyingLocation, setVerifyingLocation] = useState(false);
   const [subAnswers, setSubAnswers] = useState<Record<number, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<{
     type: "success" | "error" | "info";
     message: string;
   } | null>(null);
+
+  const handleVerifyLocation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!roundData || !locationInput.trim()) return;
+
+    setVerifyingLocation(true);
+    setFeedback(null);
+
+    try {
+      const res = await fetch("/api/game/verify-location", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          roundNumber: roundData.roundNumber,
+          locationInput: locationInput.trim(),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        setFeedback({
+          type: "error",
+          message: data.error || "Location verification failed. Please try again.",
+        });
+        setVerifyingLocation(false);
+        return;
+      }
+
+      if (data.isCorrect) {
+        setFeedback({
+          type: "success",
+          message: "🎯 TARGET LOCATION VERIFIED! OBJECT RECONNAISSANCE CLUE UNLOCKED.",
+        });
+        setLocationInput("");
+        fetchCurrentRound();
+      } else {
+        setFeedback({
+          type: "error",
+          message: data.message || "INCORRECT TARGET LOCATION. RE-EXAMINE THE CIPHER/CLUE.",
+        });
+      }
+    } catch {
+      setFeedback({ type: "error", message: "Network verification error. Please try again." });
+    } finally {
+      setVerifyingLocation(false);
+    }
+  };
 
   // Round 3: per-question verification state
   const [subChecking, setSubChecking] = useState<Record<number, boolean>>({});
@@ -419,148 +471,248 @@ export default function PlayPage() {
               </button>
             </form>
           </div>
-        )}
-
-        {/* ================= ROUND 1: DIRECT LOCATION ================= */}
+             {/* ================= ROUND 1: DIRECT LOCATION ================= */}
         {roundData.roundNumber === 1 && (
           <div className="space-y-4">
-            {/* Physical Location Card */}
+            {/* Physical Location Card (Step 1) */}
             <div className="bg-gradient-to-r from-amber-500/10 via-slate-900 to-slate-900 border border-amber-500/30 rounded-3xl p-6 glow-gold">
-              <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider mb-2">
-                <MapPin className="w-4 h-4" />
-                <span>PHYSICAL TARGET DESTINATION</span>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider">
+                  <MapPin className="w-4 h-4" />
+                  <span>STEP 1: PHYSICAL TARGET DESTINATION</span>
+                </div>
+                {roundData.isLocationVerified && (
+                  <span className="flex items-center gap-1 px-2.5 py-0.5 bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 font-mono text-[10px] font-bold rounded-full">
+                    <CheckCircle2 className="w-3 h-3" /> VERIFIED
+                  </span>
+                )}
               </div>
-              <h2 className="text-lg sm:text-xl font-mono font-bold text-white tracking-wide">
+              <h2 className="text-base sm:text-lg font-mono font-bold text-white tracking-wide mb-4">
                 {roundData.locationText || "Proceed to designated target coordinates."}
               </h2>
-            </div>
 
-            {/* Object Clue Card */}
-            <div className="bg-[#0F172A]/90 border border-slate-750 rounded-3xl p-6 sm:p-8 shadow-2xl">
-              <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider mb-3">
-                <Search className="w-4 h-4" />
-                <span>OBJECT RECONNAISSANCE CLUE</span>
-              </div>
-              <p className="text-base font-mono text-slate-200 mb-6 bg-slate-950/70 p-4 rounded-2xl border border-slate-800">
-                "{roundData.clueText}"
-              </p>
-
-              <form onSubmit={handleSubmitAnswer} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-mono text-slate-400 uppercase tracking-wider mb-2">
-                    IDENTIFIED OBJECT NAME / CODE
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Enter object name..."
-                    value={answerInput}
-                    onChange={(e) => setAnswerInput(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl px-4 py-3.5 text-base font-mono text-white placeholder-slate-600 focus:outline-none transition"
-                  />
+              {!roundData.isLocationVerified ? (
+                <form onSubmit={handleVerifyLocation} className="space-y-3 pt-2 border-t border-slate-800">
+                  <div>
+                    <label className="block text-[11px] font-mono text-slate-400 uppercase tracking-wider mb-1.5">
+                      ENTER TARGET LOCATION NAME / CODE
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Auditorium..."
+                      value={locationInput}
+                      onChange={(e) => setLocationInput(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl px-4 py-3 text-sm font-mono text-white placeholder-slate-600 focus:outline-none transition"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={verifyingLocation || !locationInput.trim()}
+                    className="w-full py-3.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-400 font-mono font-black text-xs tracking-wider uppercase rounded-xl transition cursor-pointer disabled:opacity-40"
+                  >
+                    {verifyingLocation ? "VERIFYING LOCATION..." : "VERIFY TARGET LOCATION"}
+                  </button>
+                </form>
+              ) : (
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 font-mono text-xs font-semibold">
+                  ✓ Target Location Confirmed! Object Clue Unlocked Below.
                 </div>
-
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-mono font-black text-sm tracking-wider uppercase rounded-xl transition shadow-lg disabled:opacity-50 cursor-pointer"
-                >
-                  {submitting ? "VALIDATING CODES..." : "SUBMIT OBJECT ANSWER"}
-                </button>
-              </form>
+              )}
             </div>
+
+            {/* Object Clue Card (Step 2 - Revealed ONLY when Location is Verified) */}
+            {roundData.isLocationVerified ? (
+              <div className="bg-[#0F172A]/90 border border-slate-750 rounded-3xl p-6 sm:p-8 shadow-2xl animate-in fade-in duration-300">
+                <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider mb-3">
+                  <Search className="w-4 h-4" />
+                  <span>STEP 2: OBJECT RECONNAISSANCE CLUE</span>
+                </div>
+                <p className="text-base font-mono text-slate-200 mb-6 bg-slate-950/70 p-4 rounded-2xl border border-slate-800">
+                  "{roundData.clueText}"
+                </p>
+
+                <form onSubmit={handleSubmitAnswer} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-mono text-slate-400 uppercase tracking-wider mb-2">
+                      IDENTIFIED OBJECT NAME / CODE
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Enter object name..."
+                      value={answerInput}
+                      onChange={(e) => setAnswerInput(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl px-4 py-3.5 text-base font-mono text-white placeholder-slate-600 focus:outline-none transition"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-mono font-black text-sm tracking-wider uppercase rounded-xl transition shadow-lg disabled:opacity-50 cursor-pointer"
+                  >
+                    {submitting ? "VALIDATING CODES..." : "SUBMIT OBJECT ANSWER"}
+                  </button>
+                </form>
+              </div>
+            ) : (
+              <div className="bg-[#0F172A]/50 border border-slate-800 rounded-3xl p-6 text-center space-y-2 opacity-75">
+                <Search className="w-6 h-6 text-slate-600 mx-auto" />
+                <h3 className="text-sm font-mono font-bold text-slate-400 uppercase tracking-wider">
+                  🔒 OBJECT RECONNAISSANCE CLUE LOCKED
+                </h3>
+                <p className="text-xs font-mono text-slate-500 max-w-sm mx-auto">
+                  Decode and verify the target location above to reveal your object reconnaissance clue!
+                </p>
+              </div>
+            )}
           </div>
         )}
 
         {/* ================= ROUND 2: ENCODED LOCATION + MIRRORED CLUE ================= */}
         {roundData.roundNumber === 2 && (
           <div className="space-y-4">
-            {/* Number Encoded Location */}
+            {/* Number Encoded Location (Step 1) */}
             <div className="bg-[#0F172A]/90 border border-amber-500/40 rounded-3xl p-6 glow-gold">
-              <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider">
                   <Binary className="w-4 h-4" />
-                  <span>ENCODED LOCATION CIPHER</span>
+                  <span>STEP 1: ENCODED LOCATION CIPHER</span>
                 </div>
+                {roundData.isLocationVerified && (
+                  <span className="flex items-center gap-1 px-2.5 py-0.5 bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 font-mono text-[10px] font-bold rounded-full">
+                    <CheckCircle2 className="w-3 h-3" /> VERIFIED
+                  </span>
+                )}
+              </div>
 
-              <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-2xl text-center">
+              <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-2xl text-center mb-4">
                 <span className="text-2xl sm:text-3xl font-mono font-black text-amber-400 tracking-widest">
                   {roundData.encodedNumbers || "16 - 1 - 18 - 11"}
                 </span>
                 <span className="block text-[11px] font-mono text-slate-500 mt-2">
-                  Decode numerical indices (1=A, 2=B... 26=Z) to find destination
+                  Decode numerical indices (1=A, 2=B... 26=Z) to find target location
                 </span>
               </div>
-            </div>
 
-            {/* Mirrored / Jumbled Clue */}
-            <div className="bg-[#0F172A]/90 border border-slate-750 rounded-3xl p-6 sm:p-8 shadow-2xl">
-              <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider mb-3">
-                <Edit3 className="w-4 h-4" />
-                <span>CRYPTIC OBJECT CLUE</span>
-              </div>
-
-              <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-2xl mb-6">
-                <div className="text-center">
-                  <p
-                    className={`text-base sm:text-lg font-mono font-bold text-slate-200 tracking-wider break-words ${
-                      roundData.clueTransform?.includes("MIRRORED") ? "transform-mirrored" : ""
-                    }`}
+              {!roundData.isLocationVerified ? (
+                <form onSubmit={handleVerifyLocation} className="space-y-3 pt-2 border-t border-slate-800">
+                  <div>
+                    <label className="block text-[11px] font-mono text-slate-400 uppercase tracking-wider mb-1.5">
+                      ENTER DECODED TARGET LOCATION
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Enter target location..."
+                      value={locationInput}
+                      onChange={(e) => setLocationInput(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl px-4 py-3 text-sm font-mono text-white placeholder-slate-600 focus:outline-none transition"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={verifyingLocation || !locationInput.trim()}
+                    className="w-full py-3.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-400 font-mono font-black text-xs tracking-wider uppercase rounded-xl transition cursor-pointer disabled:opacity-40"
                   >
-                    "{roundData.clueText}"
-                  </p>
+                    {verifyingLocation ? "VERIFYING LOCATION..." : "VERIFY TARGET LOCATION"}
+                  </button>
+                </form>
+              ) : (
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 font-mono text-xs font-semibold text-center">
+                  ✓ Location Verified! Proceed to the site for Object Reconnaissance below.
                 </div>
-                <span className="block text-[10px] font-mono text-slate-500 mt-2 text-center">
-                  FORMAT: {roundData.clueTransform || "MIRRORED + JUMBLED"}
-                </span>
-              </div>
-
-              <form onSubmit={handleSubmitAnswer} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-mono text-slate-400 uppercase tracking-wider mb-2">
-                    DECODED OBJECT ANSWER
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Enter object found at location..."
-                    value={answerInput}
-                    onChange={(e) => setAnswerInput(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl px-4 py-3.5 text-base font-mono text-white placeholder-slate-600 focus:outline-none transition"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-mono font-black text-sm tracking-wider uppercase rounded-xl transition shadow-lg disabled:opacity-50 cursor-pointer"
-                >
-                  {submitting ? "VALIDATING RECON..." : "SUBMIT ROUND 2 ANSWER"}
-                </button>
-              </form>
+              )}
             </div>
+
+            {/* Mirrored / Jumbled Clue (Step 2 - Revealed ONLY when Location Verified) */}
+            {roundData.isLocationVerified ? (
+              <div className="bg-[#0F172A]/90 border border-slate-750 rounded-3xl p-6 sm:p-8 shadow-2xl animate-in fade-in duration-300">
+                <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider mb-3">
+                  <Edit3 className="w-4 h-4" />
+                  <span>STEP 2: CRYPTIC OBJECT CLUE</span>
+                </div>
+
+                <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-2xl mb-6">
+                  <div className="text-center">
+                    <p
+                      className={`text-base sm:text-lg font-mono font-bold text-slate-200 tracking-wider break-words ${
+                        roundData.clueTransform?.includes("MIRRORED") ? "transform-mirrored" : ""
+                      }`}
+                    >
+                      "{roundData.clueText}"
+                    </p>
+                  </div>
+                  <span className="block text-[10px] font-mono text-slate-500 mt-2 text-center">
+                    FORMAT: {roundData.clueTransform || "MIRRORED + JUMBLED"}
+                  </span>
+                </div>
+
+                <form onSubmit={handleSubmitAnswer} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-mono text-slate-400 uppercase tracking-wider mb-2">
+                      DECODED OBJECT ANSWER
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Enter object found at location..."
+                      value={answerInput}
+                      onChange={(e) => setAnswerInput(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl px-4 py-3.5 text-base font-mono text-white placeholder-slate-600 focus:outline-none transition"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-mono font-black text-sm tracking-wider uppercase rounded-xl transition shadow-lg disabled:opacity-50 cursor-pointer"
+                  >
+                    {submitting ? "VALIDATING RECON..." : "SUBMIT ROUND 2 ANSWER"}
+                  </button>
+                </form>
+              </div>
+            ) : (
+              <div className="bg-[#0F172A]/50 border border-slate-800 rounded-3xl p-6 text-center space-y-2 opacity-75">
+                <Edit3 className="w-6 h-6 text-slate-600 mx-auto" />
+                <h3 className="text-sm font-mono font-bold text-slate-400 uppercase tracking-wider">
+                  🔒 CRYPTIC OBJECT CLUE LOCKED
+                </h3>
+                <p className="text-xs font-mono text-slate-500 max-w-sm mx-auto">
+                  Decode and verify the numerical cipher above to unlock your cryptic object clue!
+                </p>
+              </div>
+            )}
           </div>
         )}
 
         {/* ================= ROUND 3: MORSE CODE + 4 QUESTIONS ================= */}
         {roundData.roundNumber === 3 && (
           <div className="space-y-4">
+            {/* Step 1: Morse Location */}
             <div className="bg-[#0F172A]/90 border border-amber-500/40 rounded-3xl p-6 glow-gold">
-              <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider mb-4">
-                <Radio className="w-4 h-4" />
-                <span>MORSE CODE TRANSMISSION</span>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider">
+                  <Radio className="w-4 h-4" />
+                  <span>STEP 1: MORSE CODE TRANSMISSION</span>
+                </div>
+                {roundData.isLocationVerified && (
+                  <span className="flex items-center gap-1 px-2.5 py-0.5 bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 font-mono text-[10px] font-bold rounded-full">
+                    <CheckCircle2 className="w-3 h-3" /> VERIFIED
+                  </span>
+                )}
               </div>
 
-              {/* Morse text display — editable by admin per team */}
-              <div className="rounded-2xl bg-slate-950 border border-slate-750 p-4 sm:p-6">
+              {/* Morse text display */}
+              <div className="rounded-2xl bg-slate-950 border border-slate-750 p-4 sm:p-6 mb-4">
                 {roundData.imagePath ? (
-                  // If admin uploaded an image, show it
                   <img
                     src={roundData.imagePath}
                     alt="Morse Code Schematic"
                     className="w-full h-auto object-contain rounded-xl max-h-56"
                   />
                 ) : roundData.encodedNumbers ? (
-                  // Show admin-typed morse code as styled text
                   <div className="text-center space-y-2">
                     <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest mb-3">INCOMING TRANSMISSION</p>
                     <p className="text-xl sm:text-2xl font-mono font-black text-amber-400 tracking-[0.25em] leading-relaxed break-all whitespace-pre-wrap">
@@ -572,162 +724,198 @@ export default function PlayPage() {
                   <p className="text-sm font-mono text-slate-500 text-center">Awaiting morse transmission...</p>
                 )}
               </div>
+
+              {!roundData.isLocationVerified ? (
+                <form onSubmit={handleVerifyLocation} className="space-y-3 pt-2 border-t border-slate-800">
+                  <div>
+                    <label className="block text-[11px] font-mono text-slate-400 uppercase tracking-wider mb-1.5">
+                      ENTER DECODED MORSE LOCATION
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Campus..."
+                      value={locationInput}
+                      onChange={(e) => setLocationInput(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl px-4 py-3 text-sm font-mono text-white placeholder-slate-600 focus:outline-none transition"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={verifyingLocation || !locationInput.trim()}
+                    className="w-full py-3.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-400 font-mono font-black text-xs tracking-wider uppercase rounded-xl transition cursor-pointer disabled:opacity-40"
+                  >
+                    {verifyingLocation ? "VERIFYING LOCATION..." : "VERIFY MORSE LOCATION"}
+                  </button>
+                </form>
+              ) : (
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 font-mono text-xs font-semibold text-center">
+                  ✓ Morse Location Confirmed! Field Reconnaissance Questions Unlocked.
+                </div>
+              )}
             </div>
 
-            {/* 4 Physical Location Questions */}
-            <div className="bg-[#0F172A]/90 border border-slate-750 rounded-3xl p-6 sm:p-8 shadow-2xl">
-              <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider mb-2">
-                <MapPin className="w-4 h-4" />
-                <span>FOUR PHYSICAL RECONNAISSANCE QUESTIONS</span>
-              </div>
-              <p className="text-xs font-mono text-slate-400 mb-6">
-                Travel to the decoded Morse location. All 4 field questions must be answered correctly.
-              </p>
+            {/* Step 2: 4 Physical Location Questions (Unlocked ONLY when Location Verified) */}
+            {roundData.isLocationVerified ? (
+              <div className="bg-[#0F172A]/90 border border-slate-750 rounded-3xl p-6 sm:p-8 shadow-2xl animate-in fade-in duration-300">
+                <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider mb-2">
+                  <MapPin className="w-4 h-4" />
+                  <span>STEP 2: FOUR PHYSICAL RECONNAISSANCE QUESTIONS</span>
+                </div>
+                <p className="text-xs font-mono text-slate-400 mb-6">
+                  Travel to the verified Morse location. All 4 field questions must be answered correctly.
+                </p>
 
-              <form onSubmit={handleSubmitAnswer} className="space-y-5">
-                {roundData.subQuestions?.map((q, idx) => {
-                  const status = subStatus[q.id] ?? "idle";
-                  const isChecking = subChecking[q.id] ?? false;
-                  const inputVal = subAnswers[q.id] ?? "";
+                <form onSubmit={handleSubmitAnswer} className="space-y-5">
+                  {roundData.subQuestions?.map((q, idx) => {
+                    const status = subStatus[q.id] ?? "idle";
+                    const isChecking = subChecking[q.id] ?? false;
+                    const inputVal = subAnswers[q.id] ?? "";
 
-                  return (
-                    <div
-                      key={q.id}
-                      className={`relative bg-slate-950/80 border p-4 rounded-2xl transition-all duration-300 ${
-                        status === "correct"
-                          ? "border-emerald-500/70 shadow-[0_0_12px_rgba(16,185,129,0.2)]"
-                          : status === "wrong"
-                          ? "border-rose-500/70 shadow-[0_0_12px_rgba(239,68,68,0.15)]"
-                          : "border-slate-800"
-                      }`}
-                    >
-                      {/* Question header */}
-                      <div className="flex items-start justify-between mb-3">
-                        <label className="block text-xs font-mono text-amber-400 font-bold uppercase leading-tight pr-2">
-                          QUESTION {idx + 1}: {q.question}
-                        </label>
-                        {/* Status badge */}
-                        {status === "correct" && (
-                          <span className="flex items-center gap-1 shrink-0 px-2.5 py-1 bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 font-mono text-[10px] font-black rounded-lg">
-                            <CheckCircle2 className="w-3 h-3" /> VERIFIED
-                          </span>
-                        )}
-                        {status === "wrong" && (
-                          <span className="flex items-center gap-1 shrink-0 px-2.5 py-1 bg-rose-500/20 border border-rose-500/50 text-rose-400 font-mono text-[10px] font-black rounded-lg">
-                            <AlertTriangle className="w-3 h-3" /> INCORRECT
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Input + CHECK button row */}
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          placeholder={`Answer ${idx + 1}...`}
-                          value={inputVal}
-                          onChange={(e) => {
-                            // Reset status when user edits after checking
-                            if (subStatus[q.id]) {
-                              setSubStatus((prev) => ({ ...prev, [q.id]: "idle" }));
-                            }
-                            setSubAnswers((prev) => ({ ...prev, [q.id]: e.target.value }));
-                          }}
-                          disabled={status === "correct"}
-                          className={`flex-1 bg-slate-900 border rounded-xl px-4 py-3 text-sm font-mono text-white placeholder-slate-600 focus:outline-none transition ${
-                            status === "correct"
-                              ? "border-emerald-600/50 text-emerald-300 cursor-not-allowed opacity-75"
-                              : status === "wrong"
-                              ? "border-rose-600/50 focus:border-rose-400"
-                              : "border-slate-700 focus:border-amber-400"
-                          }`}
-                        />
-                        <button
-                          type="button"
-                          disabled={!inputVal.trim() || isChecking || status === "correct"}
-                          onClick={() => handleCheckSubQuestion(q.id)}
-                          className={`shrink-0 px-4 py-2 rounded-xl font-mono font-black text-xs uppercase tracking-wider transition disabled:opacity-40 disabled:cursor-not-allowed ${
-                            status === "correct"
-                              ? "bg-emerald-600/30 text-emerald-400 cursor-default"
-                              : "bg-amber-500/20 border border-amber-500/50 hover:bg-amber-500/30 text-amber-400 cursor-pointer"
-                          }`}
-                        >
-                          {isChecking ? (
-                            <span className="animate-pulse">···</span>
-                          ) : status === "correct" ? (
-                            <CheckCircle2 className="w-4 h-4" />
-                          ) : (
-                            "CHECK"
-                          )}
-                        </button>
-                      </div>
-
-                      {/* Inline feedback */}
-                      {status === "wrong" && (
-                        <p className="mt-2 text-[11px] font-mono text-rose-400">
-                          ✗ Not quite. Re-examine the physical location and try again.
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
-
-                {/* Progress indicator */}
-                {(() => {
-                  const total = roundData.subQuestions?.length ?? 0;
-                  const passed = Object.values(subStatus).filter((s) => s === "correct").length;
-                  const allPassed = passed === total && total > 0;
-                  return (
-                    <>
-                      <div className="flex items-center gap-3 pt-1">
-                        <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-gradient-to-r from-amber-500 to-emerald-500 transition-all duration-500"
-                            style={{ width: total > 0 ? `${(passed / total) * 100}%` : "0%" }}
-                          />
-                        </div>
-                        <span className="text-xs font-mono text-slate-400 shrink-0">
-                          {passed}/{total} VERIFIED
-                        </span>
-                      </div>
-
-                      {!allPassed && (
-                        <p className="text-[11px] font-mono text-slate-500 text-center">
-                          Verify all {total} questions individually before unlocking final submission.
-                        </p>
-                      )}
-
-                      <button
-                        type="submit"
-                        disabled={!allPassed || submitting}
-                        className={`w-full py-4 font-mono font-black text-sm tracking-wider uppercase rounded-xl transition shadow-lg ${
-                          allPassed
-                            ? "bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-slate-950 cursor-pointer shadow-emerald-900/40"
-                            : "bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700"
+                    return (
+                      <div
+                        key={q.id}
+                        className={`relative bg-slate-950/80 border p-4 rounded-2xl transition-all duration-300 ${
+                          status === "correct"
+                            ? "border-emerald-500/70 shadow-[0_0_12px_rgba(16,185,129,0.2)]"
+                            : status === "wrong"
+                            ? "border-rose-500/70 shadow-[0_0_12px_rgba(239,68,68,0.15)]"
+                            : "border-slate-800"
                         }`}
                       >
-                        {submitting ? (
-                          "FINALIZING ROUND 3..."
-                        ) : allPassed ? (
-                          "✓ ALL VERIFIED — UNLOCK ROUND 4"
-                        ) : (
-                          `🔒 LOCKED — ${total - passed} QUESTION${total - passed !== 1 ? "S" : ""} REMAINING`
+                        <div className="flex items-start justify-between mb-3">
+                          <label className="block text-xs font-mono text-amber-400 font-bold uppercase leading-tight pr-2">
+                            QUESTION {idx + 1}: {q.question}
+                          </label>
+                          {status === "correct" && (
+                            <span className="flex items-center gap-1 shrink-0 px-2.5 py-1 bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 font-mono text-[10px] font-black rounded-lg">
+                              <CheckCircle2 className="w-3 h-3" /> VERIFIED
+                            </span>
+                          )}
+                          {status === "wrong" && (
+                            <span className="flex items-center gap-1 shrink-0 px-2.5 py-1 bg-rose-500/20 border border-rose-500/50 text-rose-400 font-mono text-[10px] font-black rounded-lg">
+                              <AlertTriangle className="w-3 h-3" /> INCORRECT
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            placeholder={`Answer ${idx + 1}...`}
+                            value={inputVal}
+                            onChange={(e) => {
+                              if (subStatus[q.id]) {
+                                setSubStatus((prev) => ({ ...prev, [q.id]: "idle" }));
+                              }
+                              setSubAnswers((prev) => ({ ...prev, [q.id]: e.target.value }));
+                            }}
+                            disabled={status === "correct"}
+                            className={`flex-1 bg-slate-900 border rounded-xl px-4 py-3 text-sm font-mono text-white placeholder-slate-600 focus:outline-none transition ${
+                              status === "correct"
+                                ? "border-emerald-600/50 text-emerald-300 cursor-not-allowed opacity-75"
+                                : status === "wrong"
+                                ? "border-rose-600/50 focus:border-rose-400"
+                                : "border-slate-700 focus:border-amber-400"
+                            }`}
+                          />
+                          <button
+                            type="button"
+                            disabled={!inputVal.trim() || isChecking || status === "correct"}
+                            onClick={() => handleCheckSubQuestion(q.id)}
+                            className={`shrink-0 px-4 py-2 rounded-xl font-mono font-black text-xs uppercase tracking-wider transition disabled:opacity-40 disabled:cursor-not-allowed ${
+                              status === "correct"
+                                ? "bg-emerald-600/30 text-emerald-400 cursor-default"
+                                : "bg-amber-500/20 border border-amber-500/50 hover:bg-amber-500/30 text-amber-400 cursor-pointer"
+                            }`}
+                          >
+                            {isChecking ? (
+                              <span className="animate-pulse">···</span>
+                            ) : status === "correct" ? (
+                              <CheckCircle2 className="w-4 h-4" />
+                            ) : (
+                              "CHECK"
+                            )}
+                          </button>
+                        </div>
+                        {status === "wrong" && (
+                          <p className="mt-2 text-[11px] font-mono text-rose-400">
+                            ✗ Not quite. Re-examine the physical location and try again.
+                          </p>
                         )}
-                      </button>
-                    </>
-                  );
-                })()}
-              </form>
-            </div>
+                      </div>
+                    );
+                  })}
+
+                  {(() => {
+                    const total = roundData.subQuestions?.length ?? 0;
+                    const passed = Object.values(subStatus).filter((s) => s === "correct").length;
+                    const allPassed = passed === total && total > 0;
+                    return (
+                      <>
+                        <div className="flex items-center gap-3 pt-1">
+                          <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-amber-500 to-emerald-500 transition-all duration-500"
+                              style={{ width: total > 0 ? `${(passed / total) * 100}%` : "0%" }}
+                            />
+                          </div>
+                          <span className="text-xs font-mono text-slate-400 shrink-0">
+                            {passed}/{total} VERIFIED
+                          </span>
+                        </div>
+
+                        <button
+                          type="submit"
+                          disabled={!allPassed || submitting}
+                          className={`w-full py-4 font-mono font-black text-sm tracking-wider uppercase rounded-xl transition shadow-lg ${
+                            allPassed
+                              ? "bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-slate-950 cursor-pointer shadow-emerald-900/40"
+                              : "bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700"
+                          }`}
+                        >
+                          {submitting ? (
+                            "FINALIZING ROUND 3..."
+                          ) : allPassed ? (
+                            "✓ ALL VERIFIED — UNLOCK ROUND 4"
+                          ) : (
+                            `🔒 LOCKED — ${total - passed} QUESTION${total - passed !== 1 ? "S" : ""} REMAINING`
+                          )}
+                        </button>
+                      </>
+                    );
+                  })()}
+                </form>
+              </div>
+            ) : (
+              <div className="bg-[#0F172A]/50 border border-slate-800 rounded-3xl p-6 text-center space-y-2 opacity-75">
+                <Radio className="w-6 h-6 text-slate-600 mx-auto" />
+                <h3 className="text-sm font-mono font-bold text-slate-400 uppercase tracking-wider">
+                  🔒 FIELD RECONNAISSANCE QUESTIONS LOCKED
+                </h3>
+                <p className="text-xs font-mono text-slate-500 max-w-sm mx-auto">
+                  Decode and verify the morse code location above to unlock the 4 field reconnaissance questions!
+                </p>
+              </div>
+            )}
           </div>
         )}
 
         {/* ================= ROUND 4: DECOY IMAGE & ANAGRAM ================= */}
         {roundData.roundNumber === 4 && (
           <div className="space-y-4">
+            {/* Step 1: Location Anomaly */}
             <div className="bg-[#0F172A]/90 border border-amber-500/40 rounded-3xl p-6 glow-gold">
-              <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider mb-3">
-                <Sparkles className="w-4 h-4" />
-                <span>ARTIFACT ANOMALY ANALYSIS</span>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider">
+                  <Sparkles className="w-4 h-4" />
+                  <span>STEP 1: ARTIFACT ANOMALY LOCATION</span>
+                </div>
+                {roundData.isLocationVerified && (
+                  <span className="flex items-center gap-1 px-2.5 py-0.5 bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 font-mono text-[10px] font-bold rounded-full">
+                    <CheckCircle2 className="w-3 h-3" /> VERIFIED
+                  </span>
+                )}
               </div>
 
               {roundData.imagePath && (
@@ -740,37 +928,80 @@ export default function PlayPage() {
                 </div>
               )}
 
-              <p className="text-xs font-mono text-slate-300 bg-slate-950/80 p-4 rounded-xl border border-slate-800">
-                "{roundData.clueText}"
-              </p>
-            </div>
-
-            <div className="bg-[#0F172A]/90 border border-slate-750 rounded-3xl p-6 sm:p-8 shadow-2xl">
-              <form onSubmit={handleSubmitAnswer} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-mono text-slate-400 uppercase tracking-wider mb-2">
-                    ASSEMBLED MASTER WORD
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Enter final anagram word..."
-                    value={answerInput}
-                    onChange={(e) => setAnswerInput(e.target.value.toUpperCase())}
-                    className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl px-4 py-3.5 text-base font-mono font-bold tracking-widest text-white placeholder-slate-600 focus:outline-none transition uppercase"
-                  />
+              {!roundData.isLocationVerified ? (
+                <form onSubmit={handleVerifyLocation} className="space-y-3 pt-2 border-t border-slate-800">
+                  <div>
+                    <label className="block text-[11px] font-mono text-slate-400 uppercase tracking-wider mb-1.5">
+                      ENTER ANOMALY TARGET SECTOR / CODE
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Sector 4..."
+                      value={locationInput}
+                      onChange={(e) => setLocationInput(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl px-4 py-3 text-sm font-mono text-white placeholder-slate-600 focus:outline-none transition"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={verifyingLocation || !locationInput.trim()}
+                    className="w-full py-3.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-400 font-mono font-black text-xs tracking-wider uppercase rounded-xl transition cursor-pointer disabled:opacity-40"
+                  >
+                    {verifyingLocation ? "VERIFYING ANOMALY..." : "VERIFY TARGET SECTOR"}
+                  </button>
+                </form>
+              ) : (
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 font-mono text-xs font-semibold text-center">
+                  ✓ Target Sector Confirmed! Master Anagram Clue Unlocked Below.
                 </div>
-
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-mono font-black text-sm tracking-wider uppercase rounded-xl transition shadow-lg disabled:opacity-50 cursor-pointer"
-                >
-                  {submitting ? "QUALIFYING WITH SERVER..." : "SUBMIT TO CLAIM FINAL FIVE SLOT"}
-                </button>
-              </form>
+              )}
             </div>
+
+            {/* Step 2: Master Anagram Object Clue (Unlocked ONLY when Location Verified) */}
+            {roundData.isLocationVerified ? (
+              <div className="bg-[#0F172A]/90 border border-slate-750 rounded-3xl p-6 sm:p-8 shadow-2xl animate-in fade-in duration-300">
+                <p className="text-xs font-mono text-slate-300 bg-slate-950/80 p-4 rounded-xl border border-slate-800 mb-4">
+                  "{roundData.clueText}"
+                </p>
+
+                <form onSubmit={handleSubmitAnswer} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-mono text-slate-400 uppercase tracking-wider mb-2">
+                      ASSEMBLED MASTER WORD
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Enter final anagram word..."
+                      value={answerInput}
+                      onChange={(e) => setAnswerInput(e.target.value.toUpperCase())}
+                      className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl px-4 py-3.5 text-base font-mono font-bold tracking-widest text-white placeholder-slate-600 focus:outline-none transition uppercase"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-mono font-black text-sm tracking-wider uppercase rounded-xl transition shadow-lg disabled:opacity-50 cursor-pointer"
+                  >
+                    {submitting ? "QUALIFYING WITH SERVER..." : "SUBMIT TO CLAIM FINAL FIVE SLOT"}
+                  </button>
+                </form>
+              </div>
+            ) : (
+              <div className="bg-[#0F172A]/50 border border-slate-800 rounded-3xl p-6 text-center space-y-2 opacity-75">
+                <Sparkles className="w-6 h-6 text-slate-600 mx-auto" />
+                <h3 className="text-sm font-mono font-bold text-slate-400 uppercase tracking-wider">
+                  🔒 MASTER ANAGRAM CLUE LOCKED
+                </h3>
+                <p className="text-xs font-mono text-slate-500 max-w-sm mx-auto">
+                  Verify the anomaly target sector above to unlock the master anagram clue!
+                </p>
+              </div>
+            )}
           </div>
+        )}      </div>
         )}
 
         {/* ================= FINALIST WAITING ROOM ================= */}

@@ -74,7 +74,8 @@ model RoundConfig {
   clueTransform  String   @default("NORMAL") // NORMAL, MIRRORED, JUMBLED, MIRRORED_JUMBLED
   encodedNumbers String? // e.g. "16-1-18-11"
   imagePath      String? // e.g. "/images/morse_r3.png"
-  acceptedAnswers String  @default("[]") // JSON string array of valid answers
+  acceptedAnswers String  @default("[]") // JSON string array of valid answers for object clue
+  locationAnswers String? @default("[]") // JSON string array of valid answers for target location
   subQuestions   String? // JSON string array of 4 questions for Round 3 or Qualifier items
   attemptLimit   Int      @default(0) // 0 = unlimited
   penaltySeconds Int      @default(0)
