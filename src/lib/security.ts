@@ -60,7 +60,12 @@ export function jsonError(
       error: message,
       ...(details ? { details } : {}),
     },
-    { status }
+    {
+      status,
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+      },
+    }
   );
 }
 
@@ -70,6 +75,11 @@ export function jsonSuccess(data: Record<string, unknown>, status: number = 200)
       success: true,
       ...data,
     },
-    { status }
+    {
+      status,
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+      },
+    }
   );
 }

@@ -256,6 +256,15 @@ export default function AdminDashboardPage() {
     checkAdminSession();
   }, [fetchOverview, fetchPuzzles]);
 
+  // Active Background Polling Interval for Admin Hub (every 3 seconds)
+  useEffect(() => {
+    if (!isAdminAuth) return;
+    const interval = setInterval(() => {
+      fetchOverview();
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [isAdminAuth, fetchOverview]);
+
   // Real-time SSE for Admin Hub
   useEffect(() => {
     if (!isAdminAuth) return;

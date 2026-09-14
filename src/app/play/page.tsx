@@ -213,6 +213,15 @@ export default function PlayPage() {
     fetchSession();
   }, [router, fetchCurrentRound]);
 
+  // Active Background Polling Interval (every 3 seconds for instant lively updates)
+  useEffect(() => {
+    if (!team) return;
+    const interval = setInterval(() => {
+      fetchCurrentRound();
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [team, fetchCurrentRound]);
+
   // Real-time Server-Sent Events Listener
   useEffect(() => {
     const eventSource = new EventSource("/api/sse");
