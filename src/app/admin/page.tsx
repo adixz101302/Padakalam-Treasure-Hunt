@@ -1227,138 +1227,167 @@ export default function AdminDashboardPage() {
                 </div>
               )}
 
-              {/* Step 2 Object Recon Clue Text */}
-              <div>
-                <label className="block text-xs font-mono text-slate-400 uppercase mb-2">
-                  🔍 STEP 2: OBJECT RECONNAISSANCE CLUE / QUESTION TEXT (OPTIONAL)
-                </label>
-                <textarea
-                  rows={3}
-                  value={puzzleClue}
-                  onChange={(e) => setPuzzleClue(e.target.value)}
-                  placeholder="Enter object clue unlocked after location verification (leave blank if not ready)..."
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
-                />
-              </div>
-
-              {/* Step 1: Target Location Verification Answers (Rounds 1-4) */}
-              {[1, 2, 3, 4].includes(selectedRoundForEdit) && (
-                <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl space-y-2">
-                  <label className="block text-xs font-mono text-amber-400 font-bold uppercase">
-                    📍 STEP 1: TARGET LOCATION VERIFICATION ANSWERS (COMMA SEPARATED)
-                  </label>
-                  <p className="text-[10px] font-mono text-slate-400">
-                    Teams must answer one of these correctly to verify they reached the physical location before Step 2 (Object Clue) is unlocked.
-                  </p>
-                  <input
-                    type="text"
-                    value={puzzleLocationAnswers}
-                    onChange={(e) => setPuzzleLocationAnswers(e.target.value)}
-                    placeholder="e.g. Auditorium, Main Auditorium, Centenary Hall"
-                    className="w-full bg-slate-950 border border-amber-500/50 rounded-xl px-4 py-2.5 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-              )}
-
-              {/* Step 2 Answers: Sub-Questions Editor for Round 3 VS Standard Single Input for Other Rounds */}
-              {selectedRoundForEdit === 3 ? (
+              {/* ================= STEP 1: PHYSICAL LOCATION TARGET (RIDDLE + ANSWERS) ================= */}
+              {[1, 2, 3, 4, 5].includes(selectedRoundForEdit) && (
                 <div className="p-5 bg-amber-500/10 border border-amber-500/30 rounded-2xl space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <label className="block text-xs font-mono text-amber-400 font-bold uppercase">
-                        📋 STEP 2: FIELD RECONNAISSANCE QUESTIONS & ANSWERS (ROUND 3)
-                      </label>
-                      <p className="text-[10px] font-mono text-slate-400 mt-0.5">
-                        Configure the physical location questions and accepted answers shown to teams after verifying Morse location.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPuzzleSubQuestions((prev) => [
-                          ...prev,
-                          { id: prev.length + 1, question: "", acceptedAnswers: "" },
-                        ]);
-                      }}
-                      className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-400 font-mono text-xs font-bold rounded-lg transition cursor-pointer"
-                    >
-                      + Add Question
-                    </button>
+                  <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider">
+                    <MapPin className="w-4 h-4" />
+                    <span>STEP 1: PHYSICAL LOCATION TARGET (1ST QUESTION & ANSWERS)</span>
                   </div>
 
-                  <div className="space-y-3">
-                    {puzzleSubQuestions.map((q, idx) => (
-                      <div key={idx} className="p-4 bg-slate-950/80 border border-slate-800 rounded-xl space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-mono font-bold text-amber-400">
-                            QUESTION {idx + 1}
-                          </span>
-                          {puzzleSubQuestions.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setPuzzleSubQuestions((prev) => prev.filter((_, i) => i !== idx));
-                              }}
-                              className="text-[10px] font-mono text-rose-400 hover:text-rose-300 cursor-pointer"
-                            >
-                              ✕ Remove
-                            </button>
-                          )}
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-mono text-slate-400 uppercase mb-1">
-                            Question Prompt
-                          </label>
-                          <input
-                            type="text"
-                            value={q.question}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setPuzzleSubQuestions((prev) =>
-                                prev.map((item, i) => (i === idx ? { ...item, question: val } : item))
-                              );
-                            }}
-                            placeholder="e.g. What text is inscribed on the wooden memorial bench?"
-                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-mono text-slate-400 uppercase mb-1">
-                            Accepted Answers (comma-separated)
-                          </label>
-                          <input
-                            type="text"
-                            value={q.acceptedAnswers}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setPuzzleSubQuestions((prev) =>
-                                prev.map((item, i) => (i === idx ? { ...item, acceptedAnswers: val } : item))
-                              );
-                            }}
-                            placeholder="e.g. founding batch, batch 2020, alumni"
-                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
-                          />
-                        </div>
-                      </div>
-                    ))}
+                  <div>
+                    <label className="block text-xs font-mono text-amber-300 font-bold uppercase mb-1">
+                      1ST QUESTION: PHYSICAL LOCATION TARGET CLUE (MALAYALAM RIDDLE)
+                    </label>
+                    <p className="text-[10px] font-mono text-slate-400 mb-2">
+                      Riddle shown to participants under Step 1 to locate their physical destination.
+                    </p>
+                    <textarea
+                      rows={3}
+                      value={puzzleLocation}
+                      onChange={(e) => setPuzzleLocation(e.target.value)}
+                      placeholder="e.g. Raavile varunnavar enne kaanum, Vaikunneram..."
+                      className="w-full bg-slate-950 border border-amber-500/40 rounded-xl p-3 text-xs font-mono text-white focus:outline-none focus:border-amber-400 leading-relaxed"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-mono text-amber-400 font-bold uppercase mb-1">
+                      1ST QUESTION ANSWERS: ACCEPTED TARGET LOCATIONS (COMMA SEPARATED)
+                    </label>
+                    <p className="text-[10px] font-mono text-slate-400 mb-1.5">
+                      Teams enter one of these correctly to verify location and unlock Step 2.
+                    </p>
+                    <input
+                      type="text"
+                      value={puzzleLocationAnswers}
+                      onChange={(e) => setPuzzleLocationAnswers(e.target.value)}
+                      placeholder="e.g. main gate, mb, gate"
+                      className="w-full bg-slate-950 border border-amber-500/50 rounded-xl px-4 py-2.5 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
+                    />
                   </div>
                 </div>
-              ) : (
-                <div>
-                  <label className="block text-xs font-mono text-slate-400 uppercase mb-2">
-                    {selectedRoundForEdit === 0
-                      ? "QUALIFIER ANSWER (COMMA SEPARATED)"
-                      : "🔍 STEP 2: OBJECT RECONNAISSANCE / FINAL ANSWERS (COMMA SEPARATED)"}
-                  </label>
-                  <input
-                    type="text"
-                    value={puzzleAcceptedAnswers}
-                    onChange={(e) => setPuzzleAcceptedAnswers(e.target.value)}
-                    placeholder="e.g. thermometer, temperature gauge, temp meter"
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
-                  />
-                </div>
               )}
+
+              {/* ================= STEP 2: OBJECT RECONNAISSANCE / 2ND QUESTION & ANSWERS ================= */}
+              <div className="p-5 bg-slate-900/80 border border-slate-750 rounded-2xl space-y-4">
+                <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider">
+                  <Search className="w-4 h-4" />
+                  <span>STEP 2: OBJECT RECONNAISSANCE (2ND QUESTION & ANSWERS)</span>
+                </div>
+
+                {selectedRoundForEdit === 3 ? (
+                  /* Sub-Questions Editor for Round 3 */
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-mono text-slate-400">
+                        Configure the 4 physical location questions and accepted answers shown after verifying Morse location.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPuzzleSubQuestions((prev) => [
+                            ...prev,
+                            { id: prev.length + 1, question: "", acceptedAnswers: "" },
+                          ]);
+                        }}
+                        className="px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-400 font-mono text-xs font-bold rounded-lg transition cursor-pointer"
+                      >
+                        + Add Question
+                      </button>
+                    </div>
+
+                    <div className="space-y-3">
+                      {puzzleSubQuestions.map((q, idx) => (
+                        <div key={idx} className="p-4 bg-slate-950/80 border border-slate-800 rounded-xl space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-mono font-bold text-amber-400">
+                              QUESTION {idx + 1}
+                            </span>
+                            {puzzleSubQuestions.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPuzzleSubQuestions((prev) => prev.filter((_, i) => i !== idx));
+                                }}
+                                className="text-[10px] font-mono text-rose-400 hover:text-rose-300 cursor-pointer"
+                              >
+                                ✕ Remove
+                              </button>
+                            )}
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-mono text-slate-400 uppercase mb-1">
+                              Question Prompt
+                            </label>
+                            <input
+                              type="text"
+                              value={q.question}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setPuzzleSubQuestions((prev) =>
+                                  prev.map((item, i) => (i === idx ? { ...item, question: val } : item))
+                                );
+                              }}
+                              placeholder="e.g. What text is inscribed on the wooden memorial bench?"
+                              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-mono text-slate-400 uppercase mb-1">
+                              Accepted Answers (comma-separated)
+                            </label>
+                            <input
+                              type="text"
+                              value={q.acceptedAnswers}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setPuzzleSubQuestions((prev) =>
+                                  prev.map((item, i) => (i === idx ? { ...item, acceptedAnswers: val } : item))
+                                );
+                              }}
+                              placeholder="e.g. founding batch, batch 2020, alumni"
+                              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  /* Standard 2nd Question Textarea & Answers Input for Rounds 0, 1, 2, 4, 5 */
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-mono text-slate-300 font-bold uppercase mb-1">
+                        2ND QUESTION: OBJECT RECONNAISSANCE CLUE / QUESTION TEXT
+                      </label>
+                      <p className="text-[10px] font-mono text-slate-400 mb-2">
+                        Unlocked ONLY after verifying Step 1 location. (Leave blank if you haven't received this question yet).
+                      </p>
+                      <textarea
+                        rows={3}
+                        value={puzzleClue}
+                        onChange={(e) => setPuzzleClue(e.target.value)}
+                        placeholder="Type the object riddle / 2nd question here..."
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs font-mono text-white focus:outline-none focus:border-amber-400 leading-relaxed"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-mono text-slate-300 font-bold uppercase mb-1">
+                        2ND QUESTION ANSWERS: OBJECT / FINAL ACCEPTED ANSWERS (COMMA SEPARATED)
+                      </label>
+                      <input
+                        type="text"
+                        value={puzzleAcceptedAnswers}
+                        onChange={(e) => setPuzzleAcceptedAnswers(e.target.value)}
+                        placeholder="e.g. key, code, valid"
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
