@@ -54,6 +54,7 @@ export async function PATCH(
         where: { teamId },
         data: {
           currentRound: targetRound,
+          currentStep: 0,
           state: nextState,
           lastActivityAt: new Date(),
         },
@@ -89,6 +90,7 @@ export async function PATCH(
         where: { teamId },
         data: {
           currentRound: targetRound,
+          currentStep: 0,
           state: targetState,
           lastActivityAt: new Date(),
         },

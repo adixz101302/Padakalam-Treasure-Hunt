@@ -1183,11 +1183,18 @@ export default function PlayPage() {
                 )}
               </div>
 
+              {/* Physical Location Target Clue (Malayalam Riddle) */}
+              {roundData.locationText && (
+                <h2 className="text-sm sm:text-base font-mono font-semibold text-amber-200/90 tracking-wide mb-4 bg-slate-950/70 p-4 rounded-2xl border border-slate-800/80 leading-relaxed whitespace-pre-wrap">
+                  "{roundData.locationText}"
+                </h2>
+              )}
+
               {roundData.imagePath && (
                 <div className="rounded-2xl overflow-hidden border border-slate-750 bg-slate-950 p-2 mb-4">
                   <img
                     src={roundData.imagePath}
-                    alt="Decoy Schematic"
+                    alt="Artifact Anomaly Schematic"
                     className="w-full h-auto object-contain rounded-xl max-h-64"
                   />
                 </div>
@@ -1197,12 +1204,12 @@ export default function PlayPage() {
                 <form onSubmit={handleVerifyLocation} className="space-y-3 pt-2 border-t border-slate-800">
                   <div>
                     <label className="block text-[11px] font-mono text-slate-400 uppercase tracking-wider mb-1.5">
-                      ENTER ANOMALY TARGET SECTOR / CODE
+                      ENTER TARGET LOCATION NAME / CODE
                     </label>
                     <input
                       type="text"
                       required
-                      placeholder="e.g. Sector 4..."
+                      placeholder="e.g. PRP Block, Central Library..."
                       value={locationInput}
                       onChange={(e) => setLocationInput(e.target.value)}
                       className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl px-4 py-3 text-sm font-mono text-white placeholder-slate-600 focus:outline-none transition"
@@ -1216,16 +1223,16 @@ export default function PlayPage() {
                     {verifyingLocation ? (
                       <span className="flex items-center justify-center gap-2">
                         <Compass className="w-4 h-4 text-amber-400 animate-spin" />
-                        <span>VERIFYING ANOMALY...</span>
+                        <span>VERIFYING TARGET LOCATION...</span>
                       </span>
                     ) : (
-                      "VERIFY TARGET SECTOR"
+                      "VERIFY TARGET LOCATION"
                     )}
                   </button>
                 </form>
               ) : (
                 <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 font-mono text-xs font-semibold text-center">
-                  ✓ Target Sector Confirmed! Master Anagram Clue Unlocked Below.
+                  ✓ Target Location Confirmed! Master Anagram Clue Unlocked Below.
                 </div>
               )}
             </div>
