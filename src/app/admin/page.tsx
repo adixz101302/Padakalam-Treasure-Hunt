@@ -609,21 +609,21 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Upload Image with Client-Side Canvas Compression
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Upload Image with Instant Client-Side Canvas Compression (Zero Server Dependencies)
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setUploadingImage(true);
 
     const reader = new FileReader();
-    reader.onload = async (event) => {
+    reader.onload = (event) => {
       try {
         const img = new Image();
-        img.onload = async () => {
+        img.onload = () => {
           const canvas = document.createElement("canvas");
-          const MAX_WIDTH = 1024;
-          const MAX_HEIGHT = 1024;
+          const MAX_WIDTH = 800;
+          const MAX_HEIGHT = 800;
           let width = img.width;
           let height = img.height;
 
@@ -644,30 +644,12 @@ export default function AdminDashboardPage() {
           const ctx = canvas.getContext("2d");
           ctx?.drawImage(img, 0, 0, width, height);
 
-          const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.85);
-
-          const blob = await (await fetch(compressedDataUrl)).blob();
-          const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
-            type: "image/jpeg",
-          });
-
-          const formData = new FormData();
-          formData.append("file", compressedFile);
-
-          const res = await fetch("/api/upload", {
-            method: "POST",
-            body: formData,
-          });
-          const data = await res.json();
-          if (data.success) {
-            setPuzzleImagePath(data.url);
-          } else {
-            alert(data.error || "Upload failed.");
-          }
+          const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.75);
+          setPuzzleImagePath(compressedDataUrl);
           setUploadingImage(false);
         };
         img.onerror = () => {
-          alert("Invalid image file.");
+          alert("Invalid image file. Please choose a valid PNG or JPEG image.");
           setUploadingImage(false);
         };
         img.src = event.target?.result as string;
@@ -1285,39 +1267,56 @@ export default function AdminDashboardPage() {
                 </div>
               )}
 
-              {/* Image Upload (R3, R4) — optional visual supplement */}
-              {[3, 4].includes(selectedRoundForEdit) && (
-                <div>
-                  <label className="block text-xs font-mono text-slate-400 uppercase mb-2">
-                    PUZZLE IMAGE <span className="text-slate-600 font-normal">(OPTIONAL — overrides text display)</span>
+              {/* Image Upload (R1-R5) — optional visual supplement */}
+              {[1, 2, 3, 4, 5].includes(selectedRoundForEdit) && (
+                <div className="space-y-2">
+                  <label className="block text-xs font-mono text-amber-400 font-bold uppercase">
+                    🖼️ OPTIONAL PUZZLE IMAGE (OVERRIDES TEXT DISPLAY FOR THIS STAGE)
                   </label>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="text"
-                      value={puzzleImagePath}
-                      onChange={(e) => setPuzzleImagePath(e.target.value)}
-                      placeholder="Leave blank to use text display below"
-                      className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs font-mono text-white focus:outline-none"
-                    />
-                    <label className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-mono text-xs rounded-xl flex items-center gap-2 cursor-pointer transition">
-                      <Upload className="w-3.5 h-3.5" />
-                      <span>{uploadingImage ? "Uploading..." : "Upload File"}</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        className="hidden"
+                  
+                  {puzzleImagePath ? (
+                    <div className="p-3 bg-slate-950 border border-amber-500/50 rounded-2xl flex flex-col sm:flex-row items-center gap-4">
+                      <img
+                        src={puzzleImagePath}
+                        alt="Puzzle Clue Preview"
+                        className="h-32 w-auto object-contain rounded-xl border border-slate-800 bg-slate-900"
                       />
-                    </label>
-                  </div>
-                  {puzzleImagePath && (
-                    <button
-                      type="button"
-                      onClick={() => setPuzzleImagePath("")}
-                      className="mt-2 text-[10px] font-mono text-rose-400 hover:text-rose-300 transition"
-                    >
-                      ✕ Clear image (use text display instead)
-                    </button>
+                      <div className="flex-1 space-y-2 text-center sm:text-left">
+                        <span className="inline-block px-2.5 py-0.5 bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 font-mono text-[10px] font-bold rounded-full">
+                          ✓ PUZZLE IMAGE LOADED
+                        </span>
+                        <p className="text-[10px] font-mono text-slate-400">
+                          This image will be displayed to participants instead of text.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setPuzzleImagePath("")}
+                          className="px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 font-mono text-xs rounded-lg transition cursor-pointer"
+                        >
+                          ✕ Remove Image (Use Text Clue Instead)
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="text"
+                        value={puzzleImagePath}
+                        onChange={(e) => setPuzzleImagePath(e.target.value)}
+                        placeholder="Paste image URL or click Upload File..."
+                        className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
+                      />
+                      <label className="px-4 py-2.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-400 font-mono text-xs font-bold rounded-xl flex items-center gap-2 cursor-pointer transition">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>{uploadingImage ? "Processing..." : "Upload Image File"}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
                   )}
                 </div>
               )}
