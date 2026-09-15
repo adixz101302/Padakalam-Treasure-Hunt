@@ -294,17 +294,22 @@ export default function PlayPage() {
       }
 
       setRoundData((prev) => {
-        if (prev && prev.roundNumber !== data.roundNumber) {
+        if (!prev || prev.roundNumber !== data.roundNumber) {
           setSelectedPhoto(null);
           setPhotoStatus(null);
           setLocationInput("");
           setAnswerInput("");
+          setFeedback(null);
         }
         return data;
       });
 
       if (data.roundNumber === 2) {
         fetchPhotoStatus();
+      } else {
+        setSelectedPhoto(null);
+        setPhotoStatus(null);
+        setFeedback((prev) => (prev?.message?.includes("PHOTO") ? null : prev));
       }
     } catch {
       setFeedback({ type: "error", message: "Connection lost. Reconnecting..." });
@@ -347,6 +352,15 @@ export default function PlayPage() {
     }, 3000);
     return () => clearInterval(interval);
   }, [team, fetchCurrentRound]);
+
+  // Auto-clear photo-related feedback banners when outside Round 2
+  useEffect(() => {
+    if (roundData && roundData.roundNumber !== 2) {
+      setSelectedPhoto(null);
+      setPhotoStatus(null);
+      setFeedback((prev) => (prev?.message?.includes("PHOTO") ? null : prev));
+    }
+  }, [roundData?.roundNumber]);
 
   // Real-time Server-Sent Events Listener
   useEffect(() => {
