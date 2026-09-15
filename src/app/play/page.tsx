@@ -1183,22 +1183,20 @@ export default function PlayPage() {
                 )}
               </div>
 
-              {/* Physical Location Target Clue (Malayalam Riddle) */}
-              {roundData.locationText && (
-                <h2 className="text-sm sm:text-base font-mono font-semibold text-amber-200/90 tracking-wide mb-4 bg-slate-950/70 p-4 rounded-2xl border border-slate-800/80 leading-relaxed whitespace-pre-wrap">
-                  "{roundData.locationText}"
-                </h2>
-              )}
-
-              {roundData.imagePath && (
+              {/* Display Image Clue if uploaded, otherwise display Malayalam Text Riddle */}
+              {roundData.imagePath ? (
                 <div className="rounded-2xl overflow-hidden border border-slate-750 bg-slate-950 p-2 mb-4">
                   <img
                     src={roundData.imagePath}
                     alt="Artifact Anomaly Schematic"
-                    className="w-full h-auto object-contain rounded-xl max-h-64"
+                    className="w-full h-auto object-contain rounded-xl max-h-64 mx-auto"
                   />
                 </div>
-              )}
+              ) : roundData.locationText ? (
+                <h2 className="text-sm sm:text-base font-mono font-semibold text-amber-200/90 tracking-wide mb-4 bg-slate-950/70 p-4 rounded-2xl border border-slate-800/80 leading-relaxed whitespace-pre-wrap">
+                  "{roundData.locationText}"
+                </h2>
+              ) : null}
 
               {!roundData.isLocationVerified ? (
                 <form onSubmit={handleVerifyLocation} className="space-y-3 pt-2 border-t border-slate-800">
