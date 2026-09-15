@@ -609,31 +609,74 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Upload Image
+  // Upload Image with Client-Side Canvas Compression
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setUploadingImage(true);
-    const formData = new FormData();
-    formData.append("file", file);
 
-    try {
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (data.success) {
-        setPuzzleImagePath(data.url);
-      } else {
-        alert(data.error || "Upload failed.");
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const img = new Image();
+        img.onload = async () => {
+          const canvas = document.createElement("canvas");
+          const MAX_WIDTH = 1024;
+          const MAX_HEIGHT = 1024;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx?.drawImage(img, 0, 0, width, height);
+
+          const compressedDataUrl = canvas.toDataURL("image/jpeg", 0.85);
+
+          const blob = await (await fetch(compressedDataUrl)).blob();
+          const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
+            type: "image/jpeg",
+          });
+
+          const formData = new FormData();
+          formData.append("file", compressedFile);
+
+          const res = await fetch("/api/upload", {
+            method: "POST",
+            body: formData,
+          });
+          const data = await res.json();
+          if (data.success) {
+            setPuzzleImagePath(data.url);
+          } else {
+            alert(data.error || "Upload failed.");
+          }
+          setUploadingImage(false);
+        };
+        img.onerror = () => {
+          alert("Invalid image file.");
+          setUploadingImage(false);
+        };
+        img.src = event.target?.result as string;
+      } catch {
+        alert("Error processing image file.");
+        setUploadingImage(false);
       }
-    } catch {
-      alert("Error uploading image file.");
-    } finally {
-      setUploadingImage(false);
-    }
+    };
+    reader.readAsDataURL(file);
   };
 
   // ================= ADMIN LOGIN SCREEN =================

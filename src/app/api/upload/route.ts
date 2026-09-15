@@ -30,32 +30,41 @@ export async function POST(req: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Ensure uploads directory exists
-    const uploadsDir = path.join(process.cwd(), "public", "uploads");
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
+    // Build Base64 Data URL so upload works seamlessly on Vercel (read-only filesystem)
+    const base64Data = buffer.toString("base64");
+    const mimeType = file.type || "image/png";
+    const dataUrl = `data:${mimeType};base64,${base64Data}`;
+
+    let publicUrl = dataUrl;
+
+    // Optional local disk save for localhost development
+    try {
+      if (!process.env.VERCEL) {
+        const uploadsDir = path.join(process.cwd(), "public", "uploads");
+        if (!fs.existsSync(uploadsDir)) {
+          fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+        const extension = path.extname(file.name) || ".png";
+        const sanitizedBase = path
+          .basename(file.name, extension)
+          .replace(/[^a-zA-Z0-9_-]/g, "");
+        const filename = `${sanitizedBase}_${Date.now()}${extension}`;
+        const filePath = path.join(uploadsDir, filename);
+
+        fs.writeFileSync(filePath, buffer);
+        publicUrl = `/uploads/${filename}`;
+      }
+    } catch (fsErr) {
+      console.warn("Local filesystem write skipped (Serverless environment active):", fsErr);
     }
-
-    // Generate safe unique filename
-    const extension = path.extname(file.name) || ".png";
-    const sanitizedBase = path
-      .basename(file.name, extension)
-      .replace(/[^a-zA-Z0-9_-]/g, "");
-    const filename = `${sanitizedBase}_${Date.now()}${extension}`;
-    const filePath = path.join(uploadsDir, filename);
-
-    fs.writeFileSync(filePath, buffer);
-
-    const publicUrl = `/uploads/${filename}`;
 
     return jsonSuccess({
       message: "Image uploaded successfully.",
       url: publicUrl,
-      filename,
       size: file.size,
     });
   } catch (error) {
     console.error("Upload error:", error);
-    return jsonError("Server error saving uploaded file.", 500);
+    return jsonError("Server error processing uploaded file.", 500);
   }
 }
