@@ -40,6 +40,7 @@ model Team {
   finalist       Finalist?
   winner         Winner?
   roundConfigs   RoundConfig[]
+  photoSubmissions PhotoSubmission[]
 }
 
 model TeamProgress {
@@ -132,4 +133,17 @@ model AuditLog {
   message   String
   details   String? // JSON
   createdAt DateTime @default(now())
+}
+
+model PhotoSubmission {
+  id           String    @id @default(cuid())
+  teamId       String
+  team         Team      @relation(fields: [teamId], references: [teamId], onDelete: Cascade)
+  roundNumber  Int
+  imageUrl     String    @db.Text
+  status       String    @default("PENDING") // PENDING, APPROVED, REJECTED
+  rejectReason String?
+  submittedAt  DateTime  @default(now())
+  reviewedAt   DateTime?
+  reviewedBy   String?
 }

@@ -16,6 +16,10 @@ import {
   Key,
   Flame,
   Search,
+  Camera,
+  UploadCloud,
+  Clock3,
+  XCircle,
 } from "lucide-react";
 import { ConnectionStatusBadge } from "@/components/participant/ConnectionStatusBadge";
 import { CountdownTimer } from "@/components/participant/CountdownTimer";
@@ -72,6 +76,109 @@ export default function PlayPage() {
     type: "success" | "error" | "info";
     message: string;
   } | null>(null);
+
+  // Photo Verification State (Round 2 Prototype)
+  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoStatus, setPhotoStatus] = useState<{
+    hasSubmission: boolean;
+    submissionId?: string;
+    status?: string;
+    rejectReason?: string;
+  } | null>(null);
+
+  const fetchPhotoStatus = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/game/photo-status?roundNumber=2&t=${Date.now()}`, {
+        cache: "no-store",
+      });
+      const data = await res.json();
+      if (data.success && data.hasSubmission) {
+        setPhotoStatus(data);
+      } else {
+        setPhotoStatus({ hasSubmission: false });
+      }
+    } catch {}
+  }, []);
+
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const MAX_WIDTH = 1024;
+        const MAX_HEIGHT = 1024;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.75);
+        setSelectedPhoto(dataUrl);
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleUploadPhotoSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPhoto) return;
+
+    setUploadingPhoto(true);
+    setFeedback(null);
+
+    try {
+      const res = await fetch("/api/game/upload-photo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roundNumber: 2, photoData: selectedPhoto }),
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        setFeedback({
+          type: "error",
+          message: data.error || "Photo submission failed. Please try again.",
+        });
+        setUploadingPhoto(false);
+        return;
+      }
+
+      setPhotoStatus({
+        hasSubmission: true,
+        submissionId: data.submissionId,
+        status: "PENDING",
+      });
+      setFeedback({
+        type: "info",
+        message: "📷 PHOTO SUBMITTED! WAITING FOR ORGANIZER VERIFICATION...",
+      });
+    } catch {
+      setFeedback({ type: "error", message: "Network error uploading photo." });
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
   const handleVerifyLocation = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -186,13 +293,25 @@ export default function PlayPage() {
         setIsWinnerModalOpen(true);
       }
 
-      setRoundData(data);
+      setRoundData((prev) => {
+        if (prev && prev.roundNumber !== data.roundNumber) {
+          setSelectedPhoto(null);
+          setPhotoStatus(null);
+          setLocationInput("");
+          setAnswerInput("");
+        }
+        return data;
+      });
+
+      if (data.roundNumber === 2) {
+        fetchPhotoStatus();
+      }
     } catch {
       setFeedback({ type: "error", message: "Connection lost. Reconnecting..." });
     } finally {
       setLoading(false);
     }
-  }, [router]);
+  }, [router, fetchPhotoStatus]);
 
   // Fetch team session
   useEffect(() => {
@@ -238,6 +357,33 @@ export default function PlayPage() {
         const payload = JSON.parse(e.data);
         if (team && payload.teamId === team.teamId) {
           fetchCurrentRound();
+        }
+      } catch {}
+    });
+
+    eventSource.addEventListener("PHOTO_VERIFIED", (e) => {
+      try {
+        const payload = JSON.parse(e.data);
+        if (team && payload.teamId === team.teamId) {
+          if (payload.status === "APPROVED") {
+            setFeedback({
+              type: "success",
+              message: "🎉 PHOTO APPROVED BY ORGANIZERS! ADVANCING TO ROUND 3...",
+            });
+            setSelectedPhoto(null);
+            setPhotoStatus(null);
+            fetchCurrentRound();
+          } else {
+            setPhotoStatus({
+              hasSubmission: true,
+              status: "REJECTED",
+              rejectReason: payload.rejectReason,
+            });
+            setFeedback({
+              type: "error",
+              message: `❌ PHOTO REJECTED: ${payload.rejectReason || "Incorrect image. Please try again."}`,
+            });
+          }
         }
       } catch {}
     });
@@ -598,15 +744,15 @@ export default function PlayPage() {
           </div>
         )}
 
-        {/* ================= ROUND 2: ENCODED LOCATION + MIRRORED CLUE ================= */}
+        {/* ================= ROUND 2: LOCATION VERIFICATION (STEP 1) + PHOTO SUBMISSION (STEP 2) ================= */}
         {roundData.roundNumber === 2 && (
           <div className="space-y-4">
-            {/* Number Encoded Location (Step 1) */}
-            <div className="bg-[#0F172A]/90 border border-amber-500/40 rounded-3xl p-6 glow-gold">
-              <div className="flex items-center justify-between mb-3">
+            {/* Physical Location Target (Step 1) */}
+            <div className="bg-gradient-to-r from-amber-500/10 via-slate-900 to-slate-900 border border-amber-500/30 rounded-3xl p-6 glow-gold">
+              <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider">
-                  <Binary className="w-4 h-4" />
-                  <span>STEP 1: ENCODED LOCATION CIPHER</span>
+                  <MapPin className="w-4 h-4" />
+                  <span>STEP 1: PHYSICAL LOCATION TARGET CLUE</span>
                 </div>
                 {roundData.isLocationVerified && (
                   <span className="flex items-center gap-1 px-2.5 py-0.5 bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 font-mono text-[10px] font-bold rounded-full">
@@ -614,26 +760,20 @@ export default function PlayPage() {
                   </span>
                 )}
               </div>
-
-              <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-2xl text-center mb-4">
-                <span className="text-2xl sm:text-3xl font-mono font-black text-amber-400 tracking-widest">
-                  {roundData.encodedNumbers || "16 - 1 - 18 - 11"}
-                </span>
-                <span className="block text-[11px] font-mono text-slate-500 mt-2">
-                  Decode numerical indices (1=A, 2=B... 26=Z) to find target location
-                </span>
-              </div>
+              <h2 className="text-sm sm:text-base font-mono font-semibold text-amber-200/90 tracking-wide mb-4 bg-slate-950/70 p-4 rounded-2xl border border-slate-800/80 leading-relaxed whitespace-pre-wrap">
+                "{roundData.locationText || "Solve the physical location riddle to find your target location."}"
+              </h2>
 
               {!roundData.isLocationVerified ? (
                 <form onSubmit={handleVerifyLocation} className="space-y-3 pt-2 border-t border-slate-800">
                   <div>
                     <label className="block text-[11px] font-mono text-slate-400 uppercase tracking-wider mb-1.5">
-                      ENTER DECODED TARGET LOCATION
+                      ENTER TARGET LOCATION NAME / CODE
                     </label>
                     <input
                       type="text"
                       required
-                      placeholder="Enter target location..."
+                      placeholder="e.g. Auditorium..."
                       value={locationInput}
                       onChange={(e) => setLocationInput(e.target.value)}
                       className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl px-4 py-3 text-sm font-mono text-white placeholder-slate-600 focus:outline-none transition"
@@ -655,67 +795,136 @@ export default function PlayPage() {
                   </button>
                 </form>
               ) : (
-                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 font-mono text-xs font-semibold text-center">
-                  ✓ Location Verified! Proceed to the site for Object Reconnaissance below.
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 font-mono text-xs font-semibold">
+                  ✓ Target Location Confirmed! Object Photo Proof Upload Unlocked Below.
                 </div>
               )}
             </div>
 
-            {/* Mirrored / Jumbled Clue (Step 2 - Revealed ONLY when Location Verified) */}
+            {/* Photo Proof Submission Card (Step 2 - Revealed ONLY when Location is Verified) */}
             {roundData.isLocationVerified ? (
-              <div className="bg-[#0F172A]/90 border border-slate-750 rounded-3xl p-6 sm:p-8 shadow-2xl animate-in fade-in duration-300">
-                <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider mb-3">
-                  <Edit3 className="w-4 h-4" />
-                  <span>STEP 2: CRYPTIC OBJECT CLUE</span>
+              <div className="bg-[#0F172A]/90 border border-amber-500/40 rounded-3xl p-6 sm:p-8 shadow-2xl glow-gold animate-in fade-in duration-300">
+                <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider mb-4">
+                  <Camera className="w-4 h-4" />
+                  <span>STEP 2: OBJECT RECONNAISSANCE PHOTO PROOF</span>
                 </div>
 
-                <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-2xl mb-6">
-                  <div className="text-center">
-                    <p
-                      className={`text-base sm:text-lg font-mono font-bold text-slate-200 tracking-wider break-words ${
-                        roundData.clueTransform?.includes("MIRRORED") ? "transform-mirrored" : ""
-                      }`}
-                    >
+                {/* 2nd Question / Object Clue Text display */}
+                {roundData.clueText && (
+                  <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-2xl mb-4">
+                    <span className="block text-[10px] font-mono text-amber-400 font-bold uppercase mb-1">
+                      2ND QUESTION / OBJECT CLUE
+                    </span>
+                    <p className="text-sm font-mono font-semibold text-amber-200/90 leading-relaxed whitespace-pre-wrap">
                       "{roundData.clueText}"
                     </p>
                   </div>
-                  <span className="block text-[10px] font-mono text-slate-500 mt-2 text-center">
-                    FORMAT: {roundData.clueTransform || "MIRRORED + JUMBLED"}
-                  </span>
-                </div>
+                )}
 
-                <form onSubmit={handleSubmitAnswer} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-mono text-slate-400 uppercase tracking-wider mb-2">
-                      DECODED OBJECT ANSWER
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Enter object found at location..."
-                      value={answerInput}
-                      onChange={(e) => setAnswerInput(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl px-4 py-3.5 text-base font-mono text-white placeholder-slate-600 focus:outline-none transition"
-                    />
+                {photoStatus?.status === "PENDING" ? (
+                  /* PENDING APPROVAL LOADING SCREEN */
+                  <div className="p-8 bg-slate-950/90 border border-amber-500/40 rounded-2xl text-center space-y-4 animate-pulse">
+                    <div className="relative w-16 h-16 mx-auto">
+                      <div className="w-16 h-16 rounded-full border-4 border-amber-500/20 border-t-amber-400 animate-spin" />
+                      <Clock3 className="w-7 h-7 text-amber-400 absolute inset-0 m-auto" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-mono font-black text-amber-400 uppercase tracking-wider">
+                        VERIFYING WITH ORGANIZERS...
+                      </h3>
+                      <p className="text-xs font-mono text-slate-400 mt-2 max-w-sm mx-auto leading-relaxed">
+                        Your object photo proof has been transmitted to the Command Center. Please stay on this screen while organizers review your submission.
+                      </p>
+                    </div>
+                    <span className="inline-block px-3 py-1 bg-amber-500/10 border border-amber-500/30 text-amber-400 rounded-full text-[10px] font-mono font-bold tracking-widest uppercase">
+                      STATUS: PENDING ORGANIZER APPROVAL
+                    </span>
                   </div>
+                ) : (
+                  /* UPLOAD / RE-UPLOAD FORM */
+                  <form onSubmit={handleUploadPhotoSubmit} className="space-y-4">
+                    {photoStatus?.status === "REJECTED" && (
+                      <div className="p-4 bg-rose-500/10 border border-rose-500/40 rounded-2xl text-rose-300 font-mono text-xs space-y-1">
+                        <div className="flex items-center gap-2 font-bold text-rose-400 uppercase">
+                          <XCircle className="w-4 h-4" />
+                          <span>ORGANIZER REJECTED PREVIOUS PHOTO</span>
+                        </div>
+                        <p className="text-[11px] text-slate-300">
+                          Reason: "{photoStatus.rejectReason || "Incorrect location / Photo unclear."}"
+                        </p>
+                        <p className="text-[10px] text-rose-400/80 font-bold mt-1">
+                          Please capture a clear photo of the physical object/location and re-upload.
+                        </p>
+                      </div>
+                    )}
 
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-mono font-black text-sm tracking-wider uppercase rounded-xl transition shadow-lg disabled:opacity-50 cursor-pointer"
-                  >
-                    {submitting ? "VALIDATING RECON..." : "SUBMIT ROUND 2 ANSWER"}
-                  </button>
-                </form>
+                    <div className="space-y-2">
+                      <label className="block text-xs font-mono text-slate-300 uppercase font-bold">
+                        CAPTURE / UPLOAD OBJECT PHOTO
+                      </label>
+
+                      {selectedPhoto ? (
+                        <div className="relative rounded-2xl overflow-hidden border border-amber-500/50 bg-slate-950 p-2">
+                          <img
+                            src={selectedPhoto}
+                            alt="Captured Object Preview"
+                            className="w-full h-56 object-cover rounded-xl"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setSelectedPhoto(null)}
+                            className="absolute top-4 right-4 bg-rose-900/80 hover:bg-rose-800 text-white p-1.5 rounded-lg text-xs font-mono transition"
+                          >
+                            ✕ Change Photo
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="border-2 border-dashed border-slate-700 hover:border-amber-400/60 bg-slate-950/70 rounded-2xl p-8 flex flex-col items-center justify-center gap-3 cursor-pointer transition">
+                          <UploadCloud className="w-10 h-10 text-amber-400/80" />
+                          <div className="text-center">
+                            <span className="text-xs font-mono font-bold text-slate-200 block uppercase">
+                              TAP TO CAPTURE OR CHOOSE OBJECT PHOTO
+                            </span>
+                            <span className="text-[10px] font-mono text-slate-500 block mt-1">
+                              Auto-compresses to ~300KB for instant upload
+                            </span>
+                          </div>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            onChange={handlePhotoSelect}
+                            className="hidden"
+                          />
+                        </label>
+                      )}
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={!selectedPhoto || uploadingPhoto}
+                      className="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-mono font-black text-sm tracking-wider uppercase rounded-xl transition shadow-lg disabled:opacity-40 cursor-pointer"
+                    >
+                      {uploadingPhoto ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <Compass className="w-4 h-4 text-slate-950 animate-spin" />
+                          <span>COMPRESSING & TRANSMITTING...</span>
+                        </span>
+                      ) : (
+                        "SUBMIT OBJECT PHOTO FOR APPROVAL"
+                      )}
+                    </button>
+                  </form>
+                )}
               </div>
             ) : (
               <div className="bg-[#0F172A]/50 border border-slate-800 rounded-3xl p-6 text-center space-y-2 opacity-75">
-                <Edit3 className="w-6 h-6 text-slate-600 mx-auto" />
+                <Camera className="w-6 h-6 text-slate-600 mx-auto" />
                 <h3 className="text-sm font-mono font-bold text-slate-400 uppercase tracking-wider">
-                  🔒 CRYPTIC OBJECT CLUE LOCKED
+                  🔒 STEP 2: OBJECT RECONNAISSANCE PHOTO PROOF LOCKED
                 </h3>
                 <p className="text-xs font-mono text-slate-500 max-w-sm mx-auto">
-                  Decode and verify the numerical cipher above to unlock your cryptic object clue!
+                  Decode and verify the target location above to unlock your photo proof submission!
                 </p>
               </div>
             )}
