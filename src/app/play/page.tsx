@@ -681,7 +681,7 @@ export default function PlayPage() {
                     <input
                       type="text"
                       required
-                      placeholder="e.g. Auditorium..."
+                      placeholder="Enter target location name or code..."
                       value={locationInput}
                       onChange={(e) => setLocationInput(e.target.value)}
                       className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl px-4 py-3 text-sm font-mono text-white placeholder-slate-600 focus:outline-none transition"
@@ -787,7 +787,7 @@ export default function PlayPage() {
                     <input
                       type="text"
                       required
-                      placeholder="e.g. Auditorium..."
+                      placeholder="Enter target location name or code..."
                       value={locationInput}
                       onChange={(e) => setLocationInput(e.target.value)}
                       className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl px-4 py-3 text-sm font-mono text-white placeholder-slate-600 focus:outline-none transition"
@@ -992,7 +992,7 @@ export default function PlayPage() {
                     <input
                       type="text"
                       required
-                      placeholder="e.g. Campus..."
+                      placeholder="Enter decoded location..."
                       value={locationInput}
                       onChange={(e) => setLocationInput(e.target.value)}
                       className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl px-4 py-3 text-sm font-mono text-white placeholder-slate-600 focus:outline-none transition"
@@ -1207,7 +1207,7 @@ export default function PlayPage() {
                     <input
                       type="text"
                       required
-                      placeholder="e.g. PRP Block, Central Library..."
+                      placeholder="Enter target location name or code..."
                       value={locationInput}
                       onChange={(e) => setLocationInput(e.target.value)}
                       className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl px-4 py-3 text-sm font-mono text-white placeholder-slate-600 focus:outline-none transition"
@@ -1250,7 +1250,7 @@ export default function PlayPage() {
                     <input
                       type="text"
                       required
-                      placeholder="Enter final anagram word..."
+                      placeholder="Enter master anagram answer..."
                       value={answerInput}
                       onChange={(e) => setAnswerInput(e.target.value.toUpperCase())}
                       className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl px-4 py-3.5 text-base font-mono font-bold tracking-widest text-white placeholder-slate-600 focus:outline-none transition uppercase"
