@@ -81,19 +81,47 @@ export async function PATCH(
       const targetRound = Number(body.targetRound ?? 0);
       const targetState = ROUND_STATE_MAP[targetRound]?.active || "QUALIFIER_ACTIVE";
 
-      // If team was a finalist, remove finalist record on reset
-      if (team.finalist) {
-        await prisma.finalist.delete({ where: { teamId } });
+      // If team was a finalist or winner, remove records on reset
+      await prisma.finalist.deleteMany({ where: { teamId } });
+      await prisma.winner.deleteMany({ where: { teamId } });
+
+      const updateData: Record<string, unknown> = {
+        currentRound: targetRound,
+        currentStep: 0,
+        state: targetState,
+        lastActivityAt: new Date(),
+      };
+
+      if (targetRound <= 0) {
+        updateData.qualifierCompletedAt = null;
+        updateData.round1CompletedAt = null;
+        updateData.round2CompletedAt = null;
+        updateData.round3CompletedAt = null;
+        updateData.round4CompletedAt = null;
+        updateData.completedAt = null;
+      } else if (targetRound <= 1) {
+        updateData.round1CompletedAt = null;
+        updateData.round2CompletedAt = null;
+        updateData.round3CompletedAt = null;
+        updateData.round4CompletedAt = null;
+        updateData.completedAt = null;
+      } else if (targetRound <= 2) {
+        updateData.round2CompletedAt = null;
+        updateData.round3CompletedAt = null;
+        updateData.round4CompletedAt = null;
+        updateData.completedAt = null;
+      } else if (targetRound <= 3) {
+        updateData.round3CompletedAt = null;
+        updateData.round4CompletedAt = null;
+        updateData.completedAt = null;
+      } else if (targetRound <= 4) {
+        updateData.round4CompletedAt = null;
+        updateData.completedAt = null;
       }
 
       await prisma.teamProgress.update({
         where: { teamId },
-        data: {
-          currentRound: targetRound,
-          currentStep: 0,
-          state: targetState,
-          lastActivityAt: new Date(),
-        },
+        data: updateData,
       });
 
       await logAuditEvent(

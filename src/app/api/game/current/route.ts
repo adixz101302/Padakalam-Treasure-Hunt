@@ -43,14 +43,13 @@ export async function GET(req: NextRequest) {
 
     const currentRound = progress.currentRound;
 
-    // Check if team has completed the hunt (Round 4 finished, state is FINISHED/FINAL_WAITING/FINAL_ACTIVE, or event ended)
+    // Check if team has completed the hunt:
+    // A team has completed ONLY if they reached Round 5, OR Round 4 is marked FINISHED/FINAL_WAITING/FINAL_ACTIVE,
+    // OR whole event is FINISHED (and team completed Round 4), OR team is declared winner.
     const isHuntComplete =
-      currentRound === 5 ||
-      !!progress.round4CompletedAt ||
-      progress.state === "FINAL_WAITING" ||
-      progress.state === "FINAL_ACTIVE" ||
-      progress.state === "FINISHED" ||
-      event?.status === "FINISHED" ||
+      currentRound >= 5 ||
+      (currentRound === 4 && (progress.state === "FINISHED" || progress.state === "FINAL_WAITING" || progress.state === "FINAL_ACTIVE")) ||
+      (event?.status === "FINISHED" && currentRound >= 4) ||
       !!team.winner;
 
     if (isHuntComplete) {

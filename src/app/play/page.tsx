@@ -592,13 +592,15 @@ export default function PlayPage() {
 
   const isQualifier = roundData.roundNumber === 0;
   const isHuntComplete =
-    roundData.isHuntComplete ||
-    roundData.roundNumber === 5 ||
-    roundData.state === "COMPLETED" ||
-    roundData.state === "FINAL_WAITING" ||
-    roundData.state === "FINAL_ACTIVE" ||
-    roundData.state === "FINISHED" ||
-    roundData.isFinished;
+    !isQualifier &&
+    roundData.roundNumber >= 4 &&
+    (roundData.isHuntComplete ||
+      roundData.roundNumber === 5 ||
+      roundData.state === "COMPLETED" ||
+      roundData.state === "FINAL_WAITING" ||
+      roundData.state === "FINAL_ACTIVE" ||
+      roundData.state === "FINISHED" ||
+      roundData.isFinished);
 
   return (
     <div className="min-h-screen bg-[#070A11] bg-grid-pattern text-slate-100 flex flex-col justify-between pb-8">
