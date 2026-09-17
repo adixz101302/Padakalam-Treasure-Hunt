@@ -822,6 +822,16 @@ export default function AdminDashboardPage() {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
+          <a
+            href="/projector"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Open Live Projector Board in new tab"
+            className="flex items-center gap-1.5 px-3 py-2 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-amber-400 font-mono text-xs font-bold rounded-xl uppercase transition cursor-pointer shadow-sm"
+          >
+            <span>📺 Projector Board</span>
+            <ArrowUpRight className="w-3.5 h-3.5" />
+          </a>
           <button
             onClick={() => {
               setLoadingOverview(true);
@@ -962,6 +972,15 @@ export default function AdminDashboardPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            <a
+              href="/projector"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-3 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-mono font-bold text-xs rounded-xl uppercase transition shadow-md"
+            >
+              <span>📺 Open Projector</span>
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </a>
             <a
               href="/api/admin/export?format=csv"
               className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-xs rounded-xl uppercase transition"
