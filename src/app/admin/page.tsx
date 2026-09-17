@@ -1313,59 +1313,7 @@ export default function AdminDashboardPage() {
                 </div>
               )}
 
-              {/* Image Upload (R1-R5) — optional visual supplement */}
-              {[1, 2, 3, 4, 5].includes(selectedRoundForEdit) && (
-                <div className="space-y-2">
-                  <label className="block text-xs font-mono text-amber-400 font-bold uppercase">
-                    🖼️ OPTIONAL PUZZLE IMAGE (OVERRIDES TEXT DISPLAY FOR THIS STAGE)
-                  </label>
-                  
-                  {puzzleImagePath ? (
-                    <div className="p-3 bg-slate-950 border border-amber-500/50 rounded-2xl flex flex-col sm:flex-row items-center gap-4">
-                      <img
-                        src={puzzleImagePath}
-                        alt="Puzzle Clue Preview"
-                        className="h-32 w-auto object-contain rounded-xl border border-slate-800 bg-slate-900"
-                      />
-                      <div className="flex-1 space-y-2 text-center sm:text-left">
-                        <span className="inline-block px-2.5 py-0.5 bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 font-mono text-[10px] font-bold rounded-full">
-                          ✓ PUZZLE IMAGE LOADED
-                        </span>
-                        <p className="text-[10px] font-mono text-slate-400">
-                          This image will be displayed to participants instead of text.
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => setPuzzleImagePath("")}
-                          className="px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 font-mono text-xs rounded-lg transition cursor-pointer"
-                        >
-                          ✕ Remove Image (Use Text Clue Instead)
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="text"
-                        value={puzzleImagePath}
-                        onChange={(e) => setPuzzleImagePath(e.target.value)}
-                        placeholder="Paste image URL or click Upload File..."
-                        className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
-                      />
-                      <label className="px-4 py-2.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-400 font-mono text-xs font-bold rounded-xl flex items-center gap-2 cursor-pointer transition">
-                        <Upload className="w-3.5 h-3.5" />
-                        <span>{uploadingImage ? "Processing..." : "Upload Image File"}</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleImageUpload}
-                          className="hidden"
-                        />
-                      </label>
-                    </div>
-                  )}
-                </div>
-              )}
+
 
               {/* Morse Code / Cipher Text Input (R3) — optional fallback */}
               {selectedRoundForEdit === 3 && (
@@ -1515,7 +1463,59 @@ export default function AdminDashboardPage() {
                   </div>
                 ) : (
                   /* Standard 2nd Question Textarea & Answers Input for Rounds 0, 1, 2, 4, 5 */
-                  <div className="space-y-3">
+                  <div className="space-y-4">
+                    {/* Optional Object Clue Image */}
+                    <div className="space-y-2 p-4 bg-slate-950/60 border border-slate-800 rounded-xl">
+                      <label className="block text-xs font-mono text-amber-400 font-bold uppercase">
+                        🖼️ OPTIONAL OBJECT CLUE IMAGE (SHOWN IN STEP 2 TO PARTICIPANTS)
+                      </label>
+                      
+                      {puzzleImagePath ? (
+                        <div className="p-3 bg-slate-950 border border-amber-500/50 rounded-2xl flex flex-col sm:flex-row items-center gap-4">
+                          <img
+                            src={puzzleImagePath}
+                            alt="Object Clue Preview"
+                            className="h-32 w-auto object-contain rounded-xl border border-slate-800 bg-slate-900"
+                          />
+                          <div className="flex-1 space-y-2 text-center sm:text-left">
+                            <span className="inline-block px-2.5 py-0.5 bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 font-mono text-[10px] font-bold rounded-full">
+                              ✓ OBJECT CLUE IMAGE LOADED
+                            </span>
+                            <p className="text-[10px] font-mono text-slate-400">
+                              Participants will see this image under Step 2 (Object Clue) once they confirm their physical location.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => setPuzzleImagePath("")}
+                              className="px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 font-mono text-xs rounded-lg transition cursor-pointer"
+                            >
+                              ✕ Remove Image
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="text"
+                            value={puzzleImagePath}
+                            onChange={(e) => setPuzzleImagePath(e.target.value)}
+                            placeholder="Paste image URL or click Upload File..."
+                            className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
+                          />
+                          <label className="px-4 py-2.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-400 font-mono text-xs font-bold rounded-xl flex items-center gap-2 cursor-pointer transition">
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>{uploadingImage ? "Processing..." : "Upload Object Image"}</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleImageUpload}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                      )}
+                    </div>
+
                     <div>
                       <label className="block text-xs font-mono text-slate-300 font-bold uppercase mb-1">
                         2ND QUESTION: OBJECT RECONNAISSANCE CLUE / QUESTION TEXT

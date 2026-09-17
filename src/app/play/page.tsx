@@ -716,6 +716,18 @@ export default function PlayPage() {
                   <Search className="w-4 h-4" />
                   <span>STEP 2: OBJECT RECONNAISSANCE CLUE</span>
                 </div>
+
+                {/* Object Clue Image */}
+                {roundData.imagePath && (
+                  <div className="rounded-2xl overflow-hidden border border-slate-750 bg-slate-950 p-2 mb-4">
+                    <img
+                      src={roundData.imagePath}
+                      alt="Object Clue"
+                      className="w-full h-auto object-contain rounded-xl max-h-72 mx-auto"
+                    />
+                  </div>
+                )}
+
                 <p className="text-sm font-mono text-slate-200 mb-6 bg-slate-950/70 p-4 rounded-2xl border border-slate-800 leading-relaxed whitespace-pre-wrap">
                   {roundData.clueText ? `"${roundData.clueText}"` : "(Object reconnaissance clue will be updated soon)"}
                 </p>
@@ -1174,7 +1186,7 @@ export default function PlayPage() {
           </div>
         )}
 
-        {/* ================= ROUND 4: DECOY IMAGE & ANAGRAM ================= */}
+        {/* ================= ROUND 4: ARTIFACT ANOMALY / MASTER ANAGRAM ================= */}
         {roundData.roundNumber === 4 && (
           <div className="space-y-4">
             {/* Step 1: Location Anomaly */}
@@ -1182,7 +1194,7 @@ export default function PlayPage() {
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider">
                   <Sparkles className="w-4 h-4" />
-                  <span>STEP 1: ARTIFACT ANOMALY LOCATION</span>
+                  <span>STEP 1: PHYSICAL LOCATION TARGET CLUE</span>
                 </div>
                 {roundData.isLocationVerified && (
                   <span className="flex items-center gap-1 px-2.5 py-0.5 bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 font-mono text-[10px] font-bold rounded-full">
@@ -1191,20 +1203,12 @@ export default function PlayPage() {
                 )}
               </div>
 
-              {/* Display Image Clue if uploaded, otherwise display Malayalam Text Riddle */}
-              {roundData.imagePath ? (
-                <div className="rounded-2xl overflow-hidden border border-slate-750 bg-slate-950 p-2 mb-4">
-                  <img
-                    src={roundData.imagePath}
-                    alt="Artifact Anomaly Schematic"
-                    className="w-full h-auto object-contain rounded-xl max-h-64 mx-auto"
-                  />
-                </div>
-              ) : roundData.locationText ? (
-                <h2 className="text-sm sm:text-base font-mono font-semibold text-amber-200/90 tracking-wide mb-4 bg-slate-950/70 p-4 rounded-2xl border border-slate-800/80 leading-relaxed whitespace-pre-wrap">
-                  "{roundData.locationText}"
+              {/* Physical Location Text Riddle */}
+              <div className="bg-slate-950/70 p-4 rounded-2xl border border-slate-800/80 mb-4">
+                <h2 className="text-sm sm:text-base font-mono font-semibold text-amber-200/90 tracking-wide leading-relaxed whitespace-pre-wrap">
+                  "{roundData.locationText || "Solve the physical location riddle to find your target location."}"
                 </h2>
-              ) : null}
+              </div>
 
               {!roundData.isLocationVerified ? (
                 <form onSubmit={handleVerifyLocation} className="space-y-3 pt-2 border-t border-slate-800">
@@ -1238,7 +1242,7 @@ export default function PlayPage() {
                 </form>
               ) : (
                 <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 font-mono text-xs font-semibold text-center">
-                  ✓ Target Location Confirmed! Master Anagram Clue Unlocked Below.
+                  ✓ Target Location Confirmed! Object Clue Unlocked Below.
                 </div>
               )}
             </div>
@@ -1246,19 +1250,37 @@ export default function PlayPage() {
             {/* Step 2: Master Anagram Object Clue (Unlocked ONLY when Location Verified) */}
             {roundData.isLocationVerified ? (
               <div className="bg-[#0F172A]/90 border border-slate-750 rounded-3xl p-6 sm:p-8 shadow-2xl animate-in fade-in duration-300">
-                <p className="text-xs font-mono text-slate-300 bg-slate-950/80 p-4 rounded-xl border border-slate-800 mb-4">
-                  "{roundData.clueText}"
-                </p>
+                <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider mb-4">
+                  <Sparkles className="w-4 h-4" />
+                  <span>STEP 2: OBJECT RECONNAISSANCE CLUE</span>
+                </div>
+
+                {/* Object Clue Image */}
+                {roundData.imagePath && (
+                  <div className="rounded-2xl overflow-hidden border border-slate-750 bg-slate-950 p-2 mb-4">
+                    <img
+                      src={roundData.imagePath}
+                      alt="Object Clue"
+                      className="w-full h-auto object-contain rounded-xl max-h-72 mx-auto"
+                    />
+                  </div>
+                )}
+
+                {roundData.clueText && (
+                  <p className="text-sm font-mono text-slate-200 bg-slate-950/80 p-4 rounded-xl border border-slate-800 mb-4 leading-relaxed whitespace-pre-wrap">
+                    "{roundData.clueText}"
+                  </p>
+                )}
 
                 <form onSubmit={handleSubmitAnswer} className="space-y-4">
                   <div>
                     <label className="block text-xs font-mono text-slate-400 uppercase tracking-wider mb-2">
-                      ASSEMBLED MASTER WORD
+                      ASSEMBLED MASTER WORD / OBJECT CODE
                     </label>
                     <input
                       type="text"
                       required
-                      placeholder="Enter master anagram answer..."
+                      placeholder="Enter answer..."
                       value={answerInput}
                       onChange={(e) => setAnswerInput(e.target.value.toUpperCase())}
                       className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl px-4 py-3.5 text-base font-mono font-bold tracking-widest text-white placeholder-slate-600 focus:outline-none transition uppercase"
