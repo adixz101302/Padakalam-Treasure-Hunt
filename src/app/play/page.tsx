@@ -945,15 +945,15 @@ export default function PlayPage() {
           </div>
         )}
 
-        {/* ================= ROUND 3: MORSE CODE + 4 QUESTIONS ================= */}
+        {/* ================= ROUND 3: LOCATION TARGET CLUE + FIELD QUESTIONS ================= */}
         {roundData.roundNumber === 3 && (
           <div className="space-y-4">
-            {/* Step 1: Morse Location */}
+            {/* Step 1: Physical Location Target Clue */}
             <div className="bg-[#0F172A]/90 border border-amber-500/40 rounded-3xl p-6 glow-gold">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2 text-amber-400 font-mono text-xs font-bold uppercase tracking-wider">
-                  <Radio className="w-4 h-4" />
-                  <span>STEP 1: MORSE CODE TRANSMISSION</span>
+                  <MapPin className="w-4 h-4" />
+                  <span>STEP 1: PHYSICAL LOCATION TARGET CLUE</span>
                 </div>
                 {roundData.isLocationVerified && (
                   <span className="flex items-center gap-1 px-2.5 py-0.5 bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 font-mono text-[10px] font-bold rounded-full">
@@ -962,37 +962,45 @@ export default function PlayPage() {
                 )}
               </div>
 
-              {/* Morse text display */}
-              <div className="rounded-2xl bg-slate-950 border border-slate-750 p-4 sm:p-6 mb-4">
-                {roundData.imagePath ? (
+              {/* Clue Display: Image > Malayalam Text Riddle > Morse Code / Transmission fallback */}
+              {roundData.imagePath ? (
+                <div className="rounded-2xl overflow-hidden border border-slate-750 bg-slate-950 p-2 mb-4">
                   <img
                     src={roundData.imagePath}
-                    alt="Morse Code Schematic"
-                    className="w-full h-auto object-contain rounded-xl max-h-56"
+                    alt="Location Clue Schematic"
+                    className="w-full h-auto object-contain rounded-xl max-h-64 mx-auto"
                   />
-                ) : roundData.encodedNumbers ? (
-                  <div className="text-center space-y-2">
-                    <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest mb-3">INCOMING TRANSMISSION</p>
-                    <p className="text-xl sm:text-2xl font-mono font-black text-amber-400 tracking-[0.25em] leading-relaxed break-all whitespace-pre-wrap">
-                      {roundData.encodedNumbers}
-                    </p>
-                    <p className="text-[10px] font-mono text-slate-600 mt-3">DECODE TO REVEAL YOUR PHYSICAL DESTINATION</p>
-                  </div>
-                ) : (
-                  <p className="text-sm font-mono text-slate-500 text-center">Awaiting morse transmission...</p>
-                )}
-              </div>
+                </div>
+              ) : roundData.locationText ? (
+                <div className="bg-slate-950/70 p-4 rounded-2xl border border-slate-800/80 mb-4">
+                  <h2 className="text-sm sm:text-base font-mono font-semibold text-amber-200/90 tracking-wide leading-relaxed whitespace-pre-wrap">
+                    "{roundData.locationText}"
+                  </h2>
+                </div>
+              ) : roundData.encodedNumbers ? (
+                <div className="rounded-2xl bg-slate-950 border border-slate-750 p-4 sm:p-6 mb-4 text-center space-y-2">
+                  <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest mb-3">INCOMING TRANSMISSION</p>
+                  <p className="text-xl sm:text-2xl font-mono font-black text-amber-400 tracking-[0.25em] leading-relaxed break-all whitespace-pre-wrap">
+                    {roundData.encodedNumbers}
+                  </p>
+                  <p className="text-[10px] font-mono text-slate-600 mt-3">DECODE TO REVEAL YOUR PHYSICAL DESTINATION</p>
+                </div>
+              ) : (
+                <div className="rounded-2xl bg-slate-950 border border-slate-750 p-4 mb-4 text-center">
+                  <p className="text-sm font-mono text-slate-500">Awaiting location transmission...</p>
+                </div>
+              )}
 
               {!roundData.isLocationVerified ? (
                 <form onSubmit={handleVerifyLocation} className="space-y-3 pt-2 border-t border-slate-800">
                   <div>
                     <label className="block text-[11px] font-mono text-slate-400 uppercase tracking-wider mb-1.5">
-                      ENTER DECODED MORSE LOCATION
+                      ENTER TARGET LOCATION NAME / CODE
                     </label>
                     <input
                       type="text"
                       required
-                      placeholder="Enter decoded location..."
+                      placeholder="Enter target location name or code..."
                       value={locationInput}
                       onChange={(e) => setLocationInput(e.target.value)}
                       className="w-full bg-slate-950 border border-slate-700 focus:border-amber-400 rounded-xl px-4 py-3 text-sm font-mono text-white placeholder-slate-600 focus:outline-none transition"
@@ -1006,16 +1014,16 @@ export default function PlayPage() {
                     {verifyingLocation ? (
                       <span className="flex items-center justify-center gap-2">
                         <Compass className="w-4 h-4 text-amber-400 animate-spin" />
-                        <span>VERIFYING MORSE LOCATION...</span>
+                        <span>VERIFYING LOCATION...</span>
                       </span>
                     ) : (
-                      "VERIFY MORSE LOCATION"
+                      "VERIFY TARGET LOCATION"
                     )}
                   </button>
                 </form>
               ) : (
                 <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 font-mono text-xs font-semibold text-center">
-                  ✓ Morse Location Confirmed! Field Reconnaissance Questions Unlocked.
+                  ✓ Target Location Confirmed! Field Reconnaissance Questions Unlocked.
                 </div>
               )}
             </div>
@@ -1154,12 +1162,12 @@ export default function PlayPage() {
               </div>
             ) : (
               <div className="bg-[#0F172A]/50 border border-slate-800 rounded-3xl p-6 text-center space-y-2 opacity-75">
-                <Radio className="w-6 h-6 text-slate-600 mx-auto" />
+                <MapPin className="w-6 h-6 text-slate-600 mx-auto" />
                 <h3 className="text-sm font-mono font-bold text-slate-400 uppercase tracking-wider">
                   🔒 FIELD RECONNAISSANCE QUESTIONS LOCKED
                 </h3>
                 <p className="text-xs font-mono text-slate-500 max-w-sm mx-auto">
-                  Decode and verify the morse code location above to unlock the 4 field reconnaissance questions!
+                  Locate and verify the target location above to unlock the field reconnaissance questions!
                 </p>
               </div>
             )}

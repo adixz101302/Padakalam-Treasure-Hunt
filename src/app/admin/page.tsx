@@ -1297,22 +1297,6 @@ export default function AdminDashboardPage() {
                 )}
               </div>
 
-              {/* Location Text (R1-R5) */}
-              {[1, 2, 3, 4, 5].includes(selectedRoundForEdit) && (
-                <div>
-                  <label className="block text-xs font-mono text-amber-400 font-bold uppercase mb-2">
-                    📍 PHYSICAL LOCATION TARGET CLUE (MALAYALAM RIDDLE)
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={puzzleLocation}
-                    onChange={(e) => setPuzzleLocation(e.target.value)}
-                    placeholder="Enter Malayalam riddle used to locate physical destination..."
-                    className="w-full bg-slate-950 border border-amber-500/40 rounded-xl p-3 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
-                  />
-                </div>
-              )}
-
               {/* Number Cipher (R2) */}
               {selectedRoundForEdit === 2 && (
                 <div>
@@ -1383,21 +1367,21 @@ export default function AdminDashboardPage() {
                 </div>
               )}
 
-              {/* Morse Code Text Input (R3) — what participants see */}
+              {/* Morse Code / Cipher Text Input (R3) — optional fallback */}
               {selectedRoundForEdit === 3 && (
                 <div>
                   <label className="block text-xs font-mono text-slate-400 uppercase mb-1">
-                    MORSE CODE TEXT
+                    OPTIONAL MORSE CODE / CIPHER TRANSMISSION
                   </label>
-                  <p className="text-[10px] font-mono text-slate-600 mb-2">
-                    Type the morse code here (e.g. <span className="text-amber-500/80">-.-. .- -- .--. ..- ...</span>). Shown to the team on their screen if no image is uploaded above.
+                  <p className="text-[10px] font-mono text-slate-500 mb-2">
+                    Fallback cipher (e.g. <span className="text-amber-500/80">-.-. .- -- .--. ..- ...</span>). If a Malayalam riddle or image is set in Step 1 below, that riddle is displayed on the participant screen.
                   </p>
                   <textarea
-                    rows={3}
+                    rows={2}
                     value={puzzleEncodedNumbers}
                     onChange={(e) => setPuzzleEncodedNumbers(e.target.value)}
-                    placeholder="e.g. -.-. .- -- .--. ..- ..."
-                    className="w-full bg-slate-950 border border-amber-500/40 rounded-xl p-3 text-sm font-mono text-amber-400 placeholder-slate-600 focus:outline-none focus:border-amber-400 tracking-wider"
+                    placeholder="Leave empty or enter morse cipher..."
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm font-mono text-amber-400 placeholder-slate-600 focus:outline-none focus:border-amber-400 tracking-wider"
                   />
                 </div>
               )}
