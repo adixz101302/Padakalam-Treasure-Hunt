@@ -214,7 +214,7 @@ export async function handleRound4AtomicQualification(teamId: string, now: Date)
             totalFinalists: position,
             state: "FINAL_WAITING" as GameState,
             allFinalistsReady,
-            message: `CONGRATULATIONS! You made the Final Five! Position: ${position}/5.`,
+            message: `CONGRATULATIONS! You completed all rounds! Position #${position}. Proceed back to the start point!`,
           });
         } else {
           // 5 finalists already selected
@@ -230,9 +230,9 @@ export async function handleRound4AtomicQualification(teamId: string, now: Date)
 
           await logAuditEvent(
             "ROUND_4_COMPLETE",
-            `Team ${teamId} completed Round 4, but all 5 finalist slots were already filled.`,
+            `Team ${teamId} completed Round 4.`,
             teamId,
-            { status: "MISSED_FINAL" }
+            { status: "COMPLETED" }
           );
 
           resolve({
@@ -241,7 +241,7 @@ export async function handleRound4AtomicQualification(teamId: string, now: Date)
             position: null,
             totalFinalists: 5,
             state: "FINISHED" as GameState,
-            message: "You successfully completed Round 4! However, the 5 finalist positions have already been claimed.",
+            message: "CONGRATULATIONS! You successfully completed all rounds! Proceed back to the start point!",
           });
         }
       } catch (error) {

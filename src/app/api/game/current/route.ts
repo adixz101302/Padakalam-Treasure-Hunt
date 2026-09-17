@@ -43,86 +43,85 @@ export async function GET(req: NextRequest) {
 
     const currentRound = progress.currentRound;
 
-    // Check if whole event is completed or winner declared
-    if (event?.status === "FINISHED" || team.winner) {
-      const winner = await prisma.winner.findFirst({
-        include: { team: true },
-      });
-      return jsonSuccess({
-        state: "FINISHED",
-        isFinished: true,
-        winner: winner
-          ? {
-              teamId: winner.team.teamId,
-              teamName: winner.team.teamName,
-              position: winner.finalistPosition,
-              declaredAt: winner.declaredAt,
-            }
-          : null,
-      });
-    }
+    // Check if team has completed the hunt (Round 4 finished, state is FINISHED/FINAL_WAITING/FINAL_ACTIVE, or event ended)
+    const isHuntComplete =
+      currentRound === 5 ||
+      !!progress.round4CompletedAt ||
+      progress.state === "FINAL_WAITING" ||
+      progress.state === "FINAL_ACTIVE" ||
+      progress.state === "FINISHED" ||
+      event?.status === "FINISHED" ||
+      !!team.winner;
 
-    // Special handling for Final Round (Round 5)
-    if (currentRound === 5) {
-      const finalist = team.finalist;
-
-      if (!finalist) {
-        return jsonSuccess({
-          state: "FINISHED",
-          isFinalist: false,
-          message: "You completed Round 4, but the 5 finalist slots were already filled.",
+    if (isHuntComplete) {
+      let myPosition: number | null = team.finalist?.position ?? null;
+      if (!myPosition && progress.round4CompletedAt) {
+        const earlierCompletions = await prisma.teamProgress.count({
+          where: {
+            round4CompletedAt: {
+              lt: progress.round4CompletedAt,
+            },
+            teamId: { not: team.teamId },
+          },
         });
+        myPosition = earlierCompletions + 1;
+      }
+
+      // Fetch official winner details
+      const winner = await prisma.winner.findFirst({
+        include: {
+          team: {
+            include: { progress: true },
+          },
+        },
+      });
+
+      let winnerInfo = null;
+      if (winner) {
+        winnerInfo = {
+          teamId: winner.team.teamId,
+          teamName: winner.team.teamName,
+          position: winner.finalistPosition,
+          declaredAt: winner.declaredAt.toISOString(),
+          completedAt: (winner.team.progress?.round4CompletedAt || winner.declaredAt).toISOString(),
+          startedAt: (winner.team.progress?.qualifierCompletedAt || winner.team.createdAt).toISOString(),
+        };
+      } else {
+        // If not officially declared yet, find position 1 finisher
+        const firstFinisher = await prisma.finalist.findFirst({
+          where: { position: 1 },
+          include: {
+            team: {
+              include: { progress: true },
+            },
+          },
+        });
+        if (firstFinisher) {
+          winnerInfo = {
+            teamId: firstFinisher.team.teamId,
+            teamName: firstFinisher.team.teamName,
+            position: 1,
+            declaredAt: null,
+            completedAt: (firstFinisher.team.progress?.round4CompletedAt || firstFinisher.qualifiedAt).toISOString(),
+            startedAt: (firstFinisher.team.progress?.qualifierCompletedAt || firstFinisher.team.createdAt).toISOString(),
+          };
+        }
       }
 
       const now = new Date();
-      const finalStartAt = event?.finalStartedAt;
-      const isStarted = finalStartAt && now >= new Date(finalStartAt);
-
-      if (!isStarted) {
-        const totalFinalists = await prisma.finalist.count();
-        return jsonSuccess({
-          state: "FINAL_WAITING",
-          isFinalist: true,
-          position: finalist.position,
-          totalFinalists,
-          finalStartAt: finalStartAt ? finalStartAt.toISOString() : null,
-          serverTime: now.toISOString(),
-          message:
-            totalFinalists < 5
-              ? `Waiting for remaining teams... (${totalFinalists}/5 qualified)`
-              : "All 5 finalists assembled! Final round starts shortly.",
-        });
-      }
-
-      // Final round is LIVE
-      // Fetch Final Round Config (per-team or default) in one query
-      const finalConfigs = await prisma.roundConfig.findMany({
-        where: {
-          roundNumber: 5,
-          OR: [{ teamId: team.teamId }, { teamId: null }],
-        },
-      });
-      const finalConfig = finalConfigs.find((c) => c.teamId === team.teamId) || finalConfigs.find((c) => c.teamId === null);
-
-      // Fetch team-specific or shared final key assignment
-      const keyInfo =
-        (await prisma.finalKey.findUnique({
-          where: { teamId: team.teamId },
-        })) ||
-        (await prisma.finalKey.findFirst({
-          where: { teamId: null },
-        }));
-
       return jsonSuccess({
-        state: "FINAL_ACTIVE",
+        state: "COMPLETED",
+        isHuntComplete: true,
+        isFinished: true,
         roundNumber: 5,
-        title: finalConfig?.title || "The Grand Finale: Claim the Treasure",
-        clueText: finalConfig?.clueText || keyInfo?.clueText || "Find the hidden golden key to unlock the physical treasure chest!",
-        locationText: finalConfig?.locationText || keyInfo?.location || "Central Pavilion",
-        finalistPosition: finalist.position,
+        title: "All Stages Cleared",
+        myPosition: myPosition ?? (team.finalist ? team.finalist.position : null),
+        completedAt: (progress.round4CompletedAt || team.finalist?.qualifiedAt || progress.completedAt || progress.lastActivityAt)?.toISOString(),
+        startedAt: (progress.qualifierCompletedAt || team.createdAt)?.toISOString(),
+        winner: winnerInfo,
+        totalAttempts: progress.totalAttempts,
+        eventStatus: event?.status || "ACTIVE",
         serverTime: now.toISOString(),
-        instructions:
-          "This is the physical finale. Follow the clue, find the hidden key, and unlock the treasure chest before any other team!",
       });
     }
 

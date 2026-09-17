@@ -18,12 +18,14 @@ import {
   Search,
   Camera,
   UploadCloud,
+  Clock,
   Clock3,
   XCircle,
   Maximize2,
+  Trophy,
+  Flag,
 } from "lucide-react";
 import { ConnectionStatusBadge } from "@/components/participant/ConnectionStatusBadge";
-import { CountdownTimer } from "@/components/participant/CountdownTimer";
 import { VictoryModal } from "@/components/participant/VictoryModal";
 import { ImageZoomModal } from "@/components/participant/ImageZoomModal";
 
@@ -49,9 +51,22 @@ interface CurrentRoundData {
   totalAttempts?: number;
   penaltySeconds?: number;
   serverTime?: string;
-  // Final round fields
+  // Final / Completion fields
+  isHuntComplete?: boolean;
+  isFinished?: boolean;
   isFinalist?: boolean;
   position?: number;
+  myPosition?: number | null;
+  completedAt?: string;
+  startedAt?: string;
+  winner?: {
+    teamId: string;
+    teamName: string;
+    position?: number;
+    declaredAt?: string | null;
+    completedAt?: string;
+    startedAt?: string;
+  } | null;
   totalFinalists?: number;
   finalStartAt?: string;
   instructions?: string;
@@ -62,6 +77,42 @@ interface TeamSession {
   teamId: string;
   teamName: string;
   currentRound: number;
+}
+
+function formatTime(dateStr?: string | null): string {
+  if (!dateStr) return "—";
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleTimeString("en-IN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
+function formatDuration(startStr?: string | null, endStr?: string | null): string | null {
+  if (!startStr || !endStr) return null;
+  try {
+    const start = new Date(startStr).getTime();
+    const end = new Date(endStr).getTime();
+    if (isNaN(start) || isNaN(end) || end < start) return null;
+    const diffMs = end - start;
+    const totalSecs = Math.floor(diffMs / 1000);
+    const hours = Math.floor(totalSecs / 3600);
+    const minutes = Math.floor((totalSecs % 3600) / 60);
+    const seconds = totalSecs % 60;
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ${seconds}s`;
+    }
+    return `${minutes}m ${seconds}s`;
+  } catch {
+    return null;
+  }
 }
 
 export default function PlayPage() {
@@ -540,8 +591,14 @@ export default function PlayPage() {
   }
 
   const isQualifier = roundData.roundNumber === 0;
-  const isFinalWaiting = roundData.state === "FINAL_WAITING";
-  const isFinalActive = roundData.state === "FINAL_ACTIVE" || roundData.roundNumber === 5;
+  const isHuntComplete =
+    roundData.isHuntComplete ||
+    roundData.roundNumber === 5 ||
+    roundData.state === "COMPLETED" ||
+    roundData.state === "FINAL_WAITING" ||
+    roundData.state === "FINAL_ACTIVE" ||
+    roundData.state === "FINISHED" ||
+    roundData.isFinished;
 
   return (
     <div className="min-h-screen bg-[#070A11] bg-grid-pattern text-slate-100 flex flex-col justify-between pb-8">
@@ -590,13 +647,13 @@ export default function PlayPage() {
             <span>
               {isQualifier
                 ? "ENTRY QUALIFIER"
-                : isFinalWaiting || isFinalActive
-                ? "FINAL FIVE SHOWDOWN"
-                : `MISSION 0${roundData.roundNumber} / 05`}
+                : isHuntComplete
+                ? "HUNT COMPLETED // MISSION CONCLUDED"
+                : `STAGE 0${roundData.roundNumber} / 04`}
             </span>
           </div>
           <h1 className="text-xl sm:text-2xl font-mono font-black text-white uppercase tracking-tight">
-            {roundData.title}
+            {isHuntComplete ? "ALL OBJECTIVES CLEARED" : roundData.title}
           </h1>
         </div>
 
@@ -1335,7 +1392,7 @@ export default function PlayPage() {
                     disabled={submitting}
                     className="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-mono font-black text-sm tracking-wider uppercase rounded-xl transition shadow-lg disabled:opacity-50 cursor-pointer"
                   >
-                    {submitting ? "QUALIFYING WITH SERVER..." : "SUBMIT TO CLAIM FINAL FIVE SLOT"}
+                    {submitting ? "VERIFYING FINAL ANSWER..." : "SUBMIT FINAL MISSION ANSWER"}
                   </button>
                 </form>
               </div>
@@ -1353,82 +1410,190 @@ export default function PlayPage() {
           </div>
         )}
 
-        {/* ================= FINALIST WAITING ROOM ================= */}
-        {isFinalWaiting && (
-          <div className="bg-gradient-to-b from-[#1E293B] via-[#0F172A] to-[#090D16] border-2 border-amber-400 rounded-3xl p-6 sm:p-8 shadow-2xl glow-gold-lg text-center space-y-6">
-            <div className="inline-flex p-4 bg-amber-500/20 rounded-full border border-amber-400/50">
-              <Sparkles className="w-10 h-10 text-amber-400 animate-spin-slow" />
-            </div>
+        {/* ================= HUNT COMPLETED: RESULTS & GO TO START ================= */}
+        {isHuntComplete && (
+          <div className="space-y-6 animate-in fade-in zoom-in-95 duration-400">
+            {/* 1. HERO FINISH POSITION CARD */}
+            <div className="relative overflow-hidden bg-gradient-to-b from-[#1E293B] via-[#0F172A] to-[#070A11] border-2 border-amber-400/80 rounded-3xl p-6 sm:p-8 shadow-2xl glow-gold text-center">
+              <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-64 h-64 bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />
 
-            <div>
-              <span className="text-xs font-mono text-amber-400 font-bold uppercase tracking-widest">
-                STAGE 4 CLEARED
-              </span>
-              <h2 className="text-2xl sm:text-3xl font-mono font-black text-white uppercase tracking-tight mt-1">
-                YOU MADE THE FINAL FIVE!
-              </h2>
-            </div>
+              <div className="relative z-10 space-y-4">
+                <div className="inline-flex p-4 bg-amber-500/20 rounded-2xl border border-amber-400/50 shadow-xl shadow-amber-500/10">
+                  <Trophy className="w-12 h-12 text-amber-400 animate-bounce" />
+                </div>
 
-            <div className="p-6 bg-slate-950/90 border border-amber-500/40 rounded-2xl glow-gold">
-              <span className="block text-xs font-mono text-slate-400 uppercase tracking-wider mb-1">
-                OFFICIAL FINALIST POSITION
-              </span>
-              <div className="font-mono font-black text-4xl sm:text-5xl text-amber-400 tracking-wider">
-                0{roundData.position} / 05
-              </div>
-            </div>
-
-            {/* Synchronized Countdown Clock */}
-            <CountdownTimer
-              targetDate={roundData.finalStartAt || null}
-              onComplete={fetchCurrentRound}
-            />
-          </div>
-        )}
-
-        {/* ================= SYNCHRONIZED FINAL ROUND (LIVE) ================= */}
-        {isFinalActive && (
-          <div className="bg-gradient-to-b from-[#1E293B] via-[#0F172A] to-[#090D16] border-2 border-amber-400 rounded-3xl p-6 sm:p-8 shadow-2xl glow-gold-lg space-y-6">
-            <div className="text-center">
-              <div className="inline-flex p-3 bg-amber-500/20 rounded-full border border-amber-400/50 mb-3">
-                <Key className="w-8 h-8 text-amber-400 animate-bounce" />
-              </div>
-              <span className="block text-xs font-mono text-amber-400 font-bold uppercase tracking-widest">
-                THE FINAL HUNT IS LIVE
-              </span>
-              <h2 className="text-2xl sm:text-3xl font-mono font-black text-white uppercase tracking-tight mt-1">
-                {roundData.title}
-              </h2>
-            </div>
-
-            {roundData.locationText && (
-              <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-start gap-3">
-                <MapPin className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
                 <div>
-                  <span className="block text-xs font-mono text-amber-400 uppercase font-bold">
-                    PHYSICAL VAULT LOCATION
+                  <span className="inline-block px-3 py-1 bg-amber-400 text-slate-950 font-mono text-xs font-black rounded-full uppercase tracking-widest mb-1.5 shadow-md">
+                    ★ TREASURE HUNT CONCLUDED ★
                   </span>
-                  <span className="text-sm font-mono text-white font-bold">
-                    {roundData.locationText}
+                  <h2 className="text-xl sm:text-2xl font-mono font-black text-white uppercase tracking-tight">
+                    {team.teamName}
+                  </h2>
+                  <p className="text-xs font-mono text-slate-400 font-bold tracking-wider mt-0.5">
+                    TEAM IDENTIFIER: {team.teamId}
+                  </p>
+                </div>
+
+                {/* Big Position Display */}
+                <div className="p-6 bg-slate-950/90 border border-amber-500/40 rounded-2xl glow-gold max-w-sm mx-auto">
+                  <span className="block text-xs font-mono text-slate-400 uppercase tracking-widest mb-1 font-semibold">
+                    YOUR OFFICIAL FINISH POSITION
+                  </span>
+                  <div className="font-mono font-black text-4xl sm:text-6xl text-amber-400 tracking-wider">
+                    {roundData.myPosition
+                      ? `#0${roundData.myPosition}`
+                      : roundData.position
+                      ? `#0${roundData.position}`
+                      : "COMPLETED"}
+                  </div>
+                  <span className="inline-block mt-2 px-3 py-0.5 rounded-full bg-amber-500/10 border border-amber-400/40 text-amber-300 font-mono text-[11px] font-bold uppercase">
+                    {roundData.myPosition === 1
+                      ? "🥇 1st Place // Current Leader"
+                      : roundData.myPosition === 2
+                      ? "🥈 2nd Place Finisher"
+                      : roundData.myPosition === 3
+                      ? "🥉 3rd Place Finisher"
+                      : roundData.myPosition
+                      ? `Position #${roundData.myPosition} Registered`
+                      : "Finished All Stages"}
                   </span>
                 </div>
               </div>
-            )}
-
-            <div className="p-6 bg-slate-950/90 border border-slate-750 rounded-2xl">
-              <span className="block text-xs font-mono text-amber-400 uppercase font-bold mb-2">
-                FINAL GOLDEN KEY CLUE
-              </span>
-              <p className="text-base sm:text-lg font-mono font-bold text-white leading-relaxed">
-                "{roundData.clueText}"
-              </p>
             </div>
 
-            <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl text-center">
-              <p className="text-xs font-mono text-slate-300">
-                {roundData.instructions ||
-                  "Recover the physical key, unlock the treasure chest, and present the artifact to event organizers!"}
+            {/* 2. PROMINENT CALL TO ACTION: GO BACK TO START */}
+            <div className="relative overflow-hidden bg-gradient-to-r from-rose-500/20 via-amber-500/20 to-rose-500/20 border-2 border-rose-500/70 rounded-3xl p-6 sm:p-7 shadow-2xl text-center space-y-3 glow-crimson">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-rose-500 text-white shadow-lg shadow-rose-500/30 mx-auto">
+                <Flag className="w-6 h-6 animate-pulse" />
+              </div>
+
+              <div>
+                <h3 className="text-lg sm:text-xl font-mono font-black text-white tracking-wide uppercase">
+                  🏃 HEAD BACK TO THE STARTING POINT
+                </h3>
+                <span className="inline-block mt-1 px-3 py-1 bg-rose-500/30 border border-rose-400/60 rounded-full font-mono text-xs font-black text-rose-300 tracking-wider uppercase">
+                  REPORT TO BASE CAMP / AUDITORIUM NOW
+                </span>
+              </div>
+
+              <p className="text-xs sm:text-sm font-mono text-slate-200 leading-relaxed max-w-lg mx-auto font-medium">
+                Your online missions are officially logged. Please proceed directly back to the starting point to check in with the coordinators, verify your physical arrival, and await the official podium ceremony!
               </p>
+
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-950/70 border border-slate-700 text-amber-400 font-mono text-xs font-semibold">
+                <span>⚠️ Gather all team members and return together</span>
+              </div>
+            </div>
+
+            {/* 3. TIME COMPARISON CARDS (YOUR TIME & WINNER'S TIME) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 font-mono">
+              {/* YOUR TIME */}
+              <div className="bg-[#0F172A]/90 border border-slate-750 p-5 rounded-3xl shadow-xl flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center gap-2 text-cyan-400 text-xs font-bold uppercase tracking-wider mb-3">
+                    <Clock className="w-4 h-4" />
+                    <span>YOUR COMPLETION TIME</span>
+                  </div>
+                  <div className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                    {formatTime(roundData.completedAt)}
+                  </div>
+                  {formatDuration(roundData.startedAt, roundData.completedAt) && (
+                    <div className="text-xs font-bold text-cyan-300/90 mt-1">
+                      Duration: {formatDuration(roundData.startedAt, roundData.completedAt)}
+                    </div>
+                  )}
+                </div>
+                <div className="mt-4 pt-3 border-t border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
+                  <span>Total Attempts:</span>
+                  <span className="font-bold text-white">{roundData.totalAttempts ?? 0}</span>
+                </div>
+              </div>
+
+              {/* WINNER'S TIME */}
+              <div className="bg-[#0F172A]/90 border border-amber-500/40 p-5 rounded-3xl shadow-xl flex flex-col justify-between glow-gold">
+                <div>
+                  <div className="flex items-center gap-2 text-amber-400 text-xs font-bold uppercase tracking-wider mb-3">
+                    <Trophy className="w-4 h-4" />
+                    <span>
+                      {roundData.winner?.declaredAt
+                        ? "OFFICIAL WINNER'S TIME"
+                        : "1ST PLACE FINISH TIME"}
+                    </span>
+                  </div>
+
+                  {roundData.winner ? (
+                    <div>
+                      <div className="text-2xl sm:text-3xl font-black text-amber-400 tracking-tight">
+                        {formatTime(roundData.winner.completedAt || roundData.winner.declaredAt)}
+                      </div>
+                      <div className="text-xs font-bold text-white mt-1 truncate">
+                        {roundData.winner.teamName} ({roundData.winner.teamId})
+                      </div>
+                      {formatDuration(roundData.winner.startedAt, roundData.winner.completedAt) && (
+                        <div className="text-[11px] text-amber-300/80 font-bold mt-0.5">
+                          Duration: {formatDuration(roundData.winner.startedAt, roundData.winner.completedAt)}
+                        </div>
+                      )}
+                    </div>
+                  ) : roundData.myPosition === 1 ? (
+                    <div>
+                      <div className="text-2xl sm:text-3xl font-black text-emerald-400 tracking-tight">
+                        {formatTime(roundData.completedAt)}
+                      </div>
+                      <div className="text-xs font-bold text-emerald-300 mt-1">
+                        ★ You hold the fastest time!
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="py-2">
+                      <div className="text-sm font-bold text-slate-300">
+                        Awaiting Official Announcement
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        Will be declared at the main stage once all teams check in.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-slate-800 text-[11px] text-slate-400">
+                  {roundData.winner?.teamId === team.teamId ? (
+                    <span className="text-amber-400 font-bold">🏆 This is your team!</span>
+                  ) : (
+                    <span>Verified by Command Center</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* 4. MOTIVATION: YOU TRIED HARD */}
+            <div className="bg-[#0F172A]/90 border border-slate-750 p-6 sm:p-7 rounded-3xl shadow-xl space-y-3 text-center sm:text-left">
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-amber-400">
+                  <Sparkles className="w-6 h-6" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-mono font-black text-amber-400 uppercase tracking-widest">
+                    RESILIENCE & DEDICATION
+                  </span>
+                  <h4 className="text-base sm:text-lg font-mono font-black text-white uppercase">
+                    INCREDIBLE HUNT, {team.teamName}!
+                  </h4>
+                </div>
+              </div>
+
+              <div className="space-y-2 text-xs sm:text-sm font-mono text-slate-300 leading-relaxed pt-2">
+                <p>
+                  You tackled cryptic riddles, ran across the campus under tight pressure, and gave every single clue your absolute best.
+                </p>
+                <p className="text-slate-400">
+                  Conquering all 4 stages demanded razor-sharp intelligence, teamwork, and unstoppable grit. Whether you arrived 1st or fought tooth-and-nail to the finish, hold your heads high — you showed true warrior spirit in Padakalam 2.0!
+                </p>
+              </div>
+
+              <div className="pt-2 flex items-center justify-center sm:justify-start gap-2 text-xs font-mono text-amber-400 font-bold">
+                <span>⚔️ Anveshipin Kandethum 2026 // Mission Accomplished</span>
+              </div>
             </div>
           </div>
         )}

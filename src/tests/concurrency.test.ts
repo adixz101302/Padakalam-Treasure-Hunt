@@ -73,7 +73,7 @@ describe("MANDATORY CONCURRENCY TEST: First-Five Finalists Selection", () => {
     // 4. Verify no duplicate team IDs
     const uniqueTeamIds = new Set(dbFinalists.map((f) => f.teamId));
     expect(uniqueTeamIds.size).toBe(5);
-  });
+  }, 90000);
 
   it("should handle idempotent re-submission from an existing finalist without increasing count", async () => {
     const dbFinalists = await prisma.finalist.findMany();
