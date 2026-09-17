@@ -654,13 +654,38 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Upload Image with Instant Client-Side Canvas Compression (Zero Server Dependencies)
+  // Upload Image:
+  // - Stage 4: 100% Uncompressed & Lossless (Preserves raw resolution for hidden letters/steganography)
+  // - Other Stages: Standard quick canvas compression (~800px)
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setUploadingImage(true);
 
+    // ONLY FOR STAGE 4: Upload 100% uncompressed as it is (zero downscaling, zero loss of resolution)
+    if (selectedRoundForEdit === 4) {
+      if (file.size > 4.2 * 1024 * 1024) {
+        alert(
+          `Notice: File size is ${(file.size / (1024 * 1024)).toFixed(1)}MB. Uncompressed original image will be uploaded directly. For best performance, keep below 4.2MB.`
+        );
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const rawDataUrl = event.target?.result as string;
+        setPuzzleImagePath(rawDataUrl);
+        setUploadingImage(false);
+      };
+      reader.onerror = () => {
+        alert("Error loading original high-resolution image.");
+        setUploadingImage(false);
+      };
+      reader.readAsDataURL(file);
+      return;
+    }
+
+    // FOR ALL OTHER STAGES: Standard canvas compression for quick transmission
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
@@ -1513,24 +1538,37 @@ export default function AdminDashboardPage() {
                           </div>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="text"
-                            value={puzzleImagePath}
-                            onChange={(e) => setPuzzleImagePath(e.target.value)}
-                            placeholder="Paste image URL or click Upload File..."
-                            className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
-                          />
-                          <label className="px-4 py-2.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-400 font-mono text-xs font-bold rounded-xl flex items-center gap-2 cursor-pointer transition">
-                            <Upload className="w-3.5 h-3.5" />
-                            <span>{uploadingImage ? "Processing..." : "Upload Object Image"}</span>
+                        <div>
+                          <div className="flex items-center gap-3">
                             <input
-                              type="file"
-                              accept="image/*"
-                              onChange={handleImageUpload}
-                              className="hidden"
+                              type="text"
+                              value={puzzleImagePath}
+                              onChange={(e) => setPuzzleImagePath(e.target.value)}
+                              placeholder="Paste image URL or click Upload File..."
+                              className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
                             />
-                          </label>
+                            <label className="px-4 py-2.5 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-400 font-mono text-xs font-bold rounded-xl flex items-center gap-2 cursor-pointer transition">
+                              <Upload className="w-3.5 h-3.5" />
+                              <span>
+                                {uploadingImage
+                                  ? "Processing..."
+                                  : selectedRoundForEdit === 4
+                                  ? "Upload Full-Res Image (Uncompressed)"
+                                  : "Upload Object Image"}
+                              </span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleImageUpload}
+                                className="hidden"
+                              />
+                            </label>
+                          </div>
+                          {selectedRoundForEdit === 4 && (
+                            <p className="mt-2 text-[11px] font-mono text-emerald-400 flex items-center gap-1.5 font-semibold">
+                              <span>🛡️ Stage 4 Lossless Mode Active: Uploads 100% uncompressed (original full resolution preserved so hidden letters stay clear).</span>
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>
