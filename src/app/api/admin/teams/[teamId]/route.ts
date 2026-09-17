@@ -112,16 +112,32 @@ export async function PATCH(
     }
 
     if (action === "UPDATE") {
+      const newTeamName = typeof body.teamName === "string" && body.teamName.trim() ? body.teamName.trim() : team.teamName;
+      const newPin = typeof body.pin === "string" && body.pin.trim() ? body.pin.trim() : team.pin;
+      const newActive = body.isActive !== undefined ? Boolean(body.isActive) : team.isActive;
+
       const updated = await prisma.team.update({
         where: { teamId },
         data: {
-          teamName: body.teamName !== undefined ? body.teamName : team.teamName,
-          pin: body.pin !== undefined ? body.pin : team.pin,
-          isActive: body.isActive !== undefined ? body.isActive : team.isActive,
+          teamName: newTeamName,
+          pin: newPin,
+          isActive: newActive,
         },
       });
 
-      return jsonSuccess({ message: "Team updated successfully.", team: updated });
+      await logAuditEvent(
+        "ADMIN_ACTION",
+        `Admin updated team ${teamId} name to "${newTeamName}"`,
+        teamId
+      );
+
+      broadcastEvent("TEAM_STATUS", {
+        teamId,
+        teamName: updated.teamName,
+        isActive: updated.isActive,
+      });
+
+      return jsonSuccess({ message: `Team ${teamId} updated successfully.`, team: updated });
     }
 
     return jsonError("Unknown action requested.", 400);

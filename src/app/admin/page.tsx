@@ -150,6 +150,13 @@ export default function AdminDashboardPage() {
   const [newTeamPin, setNewTeamPin] = useState("1234");
   const [csvBatchText, setCsvBatchText] = useState("");
 
+  // Edit Team Modal State
+  const [isEditTeamModalOpen, setIsEditTeamModalOpen] = useState(false);
+  const [editingTeamId, setEditingTeamId] = useState("");
+  const [editingTeamName, setEditingTeamName] = useState("");
+  const [editingTeamPin, setEditingTeamPin] = useState("");
+  const [savingEditTeam, setSavingEditTeam] = useState(false);
+
   const [isDeclareWinnerModalOpen, setIsDeclareWinnerModalOpen] = useState(false);
   const [selectedWinnerTeamId, setSelectedWinnerTeamId] = useState("");
 
@@ -492,6 +499,44 @@ export default function AdminDashboardPage() {
     setCsvBatchText("");
     setIsAddTeamModalOpen(false);
     fetchOverview();
+  };
+
+  // Edit Team Handlers
+  const handleOpenEditTeam = (team: { teamId: string; teamName: string }) => {
+    setEditingTeamId(team.teamId);
+    setEditingTeamName(team.teamName);
+    setEditingTeamPin("");
+    setIsEditTeamModalOpen(true);
+  };
+
+  const handleSaveEditTeam = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTeamId || !editingTeamName.trim()) return;
+
+    setSavingEditTeam(true);
+    try {
+      const res = await fetch(`/api/admin/teams/${editingTeamId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "UPDATE",
+          teamName: editingTeamName.trim(),
+          pin: editingTeamPin.trim() || undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setIsEditTeamModalOpen(false);
+        fetchOverview();
+      } else {
+        alert(data.error || "Failed to update team.");
+      }
+    } catch {
+      alert("Error updating team.");
+    } finally {
+      setSavingEditTeam(false);
+    }
   };
 
   // Declare Winner
@@ -1044,8 +1089,17 @@ export default function AdminDashboardPage() {
                       <tr key={t.teamId} className="hover:bg-slate-900/50 transition">
                         <td className="p-4">
                           <div className="font-bold text-white tracking-wider">{t.teamId}</div>
-                          <div className="text-slate-400 text-[11px] truncate max-w-[180px]">
-                            {t.teamName}
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-slate-400 text-[11px] truncate max-w-[160px]" title={t.teamName}>
+                              {t.teamName}
+                            </span>
+                            <button
+                              onClick={() => handleOpenEditTeam(t)}
+                              title="Edit Team Name & PIN"
+                              className="p-1 rounded text-slate-500 hover:text-amber-400 hover:bg-slate-800 transition cursor-pointer"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                            </button>
                           </div>
                         </td>
                         <td className="p-4">
@@ -1081,6 +1135,14 @@ export default function AdminDashboardPage() {
                           {t.lastActivityAt ? new Date(t.lastActivityAt).toLocaleTimeString() : "—"}
                         </td>
                         <td className="p-4 text-right space-x-1.5">
+                          <button
+                            onClick={() => handleOpenEditTeam(t)}
+                            title="Edit Team Name & PIN"
+                            className="px-2.5 py-1 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-amber-400 rounded-lg text-[10px] transition cursor-pointer inline-flex items-center gap-1"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                            <span>Edit</span>
+                          </button>
                           <button
                             onClick={() => handleTeamAction(t.teamId, "ADVANCE")}
                             title="Manually Advance Round"
@@ -1786,6 +1848,81 @@ export default function AdminDashboardPage() {
                   className="px-6 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-mono font-bold text-xs rounded-xl uppercase"
                 >
                   Confirm Creation
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODAL: EDIT TEAM ================= */}
+      {isEditTeamModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-[#0F172A] border border-amber-500/40 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl glow-gold">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2 text-amber-400 font-mono text-sm font-bold uppercase">
+                <Edit2 className="w-4 h-4" />
+                <span>Edit Team Details</span>
+              </div>
+              <button
+                onClick={() => setIsEditTeamModalOpen(false)}
+                className="text-slate-400 hover:text-white font-mono text-base cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditTeam} className="space-y-4">
+              <div>
+                <label className="block text-xs font-mono text-slate-400 uppercase mb-1">
+                  TEAM ID
+                </label>
+                <div className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs font-mono text-amber-400 font-bold tracking-wider">
+                  {editingTeamId}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-slate-400 uppercase mb-1">
+                  TEAM NAME <span className="text-amber-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Enter team name..."
+                  value={editingTeamName}
+                  onChange={(e) => setEditingTeamName(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-slate-400 uppercase mb-1">
+                  NEW TEAM PIN <span className="text-slate-600 font-normal">(Leave blank to keep current)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Leave empty or enter new PIN..."
+                  value={editingTeamPin}
+                  onChange={(e) => setEditingTeamPin(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs font-mono text-white focus:outline-none focus:border-amber-400"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEditTeamModalOpen(false)}
+                  className="flex-1 py-2.5 bg-slate-800 text-slate-300 font-mono text-xs rounded-xl hover:bg-slate-700 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEditTeam || !editingTeamName.trim()}
+                  className="flex-1 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-mono font-bold text-xs uppercase rounded-xl transition cursor-pointer disabled:opacity-40"
+                >
+                  {savingEditTeam ? "Saving..." : "Save Changes"}
                 </button>
               </div>
             </form>
