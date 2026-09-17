@@ -20,10 +20,12 @@ import {
   UploadCloud,
   Clock3,
   XCircle,
+  Maximize2,
 } from "lucide-react";
 import { ConnectionStatusBadge } from "@/components/participant/ConnectionStatusBadge";
 import { CountdownTimer } from "@/components/participant/CountdownTimer";
 import { VictoryModal } from "@/components/participant/VictoryModal";
+import { ImageZoomModal } from "@/components/participant/ImageZoomModal";
 
 interface SubQuestionItem {
   id: number;
@@ -86,6 +88,9 @@ export default function PlayPage() {
     status?: string;
     rejectReason?: string;
   } | null>(null);
+
+  // Zoomable Image Lightbox Modal State
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
   const fetchPhotoStatus = useCallback(async () => {
     try {
@@ -719,12 +724,26 @@ export default function PlayPage() {
 
                 {/* Object Clue Image */}
                 {roundData.imagePath && (
-                  <div className="rounded-2xl overflow-hidden border border-slate-750 bg-slate-950 p-2 mb-4">
+                  <div
+                    onClick={() => setZoomedImage(roundData.imagePath || null)}
+                    className="relative rounded-2xl overflow-hidden border border-amber-500/30 hover:border-amber-400 bg-slate-950 p-2 mb-4 cursor-zoom-in group transition duration-200"
+                    title="Click to zoom and inspect image"
+                  >
                     <img
                       src={roundData.imagePath}
                       alt="Object Clue"
-                      className="w-full h-auto object-contain rounded-xl max-h-72 mx-auto"
+                      className="w-full h-auto object-contain rounded-xl max-h-72 mx-auto group-hover:scale-[1.01] transition duration-200"
                     />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-xl pointer-events-none">
+                      <span className="px-3.5 py-2 bg-slate-900/95 border border-amber-400/60 text-amber-400 font-mono text-xs font-bold rounded-xl shadow-2xl flex items-center gap-2">
+                        <Maximize2 className="w-4 h-4" />
+                        <span>Click to Zoom & Inspect</span>
+                      </span>
+                    </div>
+                    <div className="absolute bottom-4 right-4 sm:hidden bg-slate-900/90 border border-amber-400/40 text-amber-400 px-2.5 py-1 rounded-lg text-[10px] font-mono flex items-center gap-1.5 shadow-lg">
+                      <Maximize2 className="w-3 h-3" />
+                      <span>Tap to Zoom</span>
+                    </div>
                   </div>
                 )}
 
@@ -974,20 +993,30 @@ export default function PlayPage() {
                 )}
               </div>
 
-              {/* Clue Display: Image > Malayalam Text Riddle > Morse Code / Transmission fallback */}
-              {roundData.imagePath ? (
-                <div className="rounded-2xl overflow-hidden border border-slate-750 bg-slate-950 p-2 mb-4">
-                  <img
-                    src={roundData.imagePath}
-                    alt="Location Clue Schematic"
-                    className="w-full h-auto object-contain rounded-xl max-h-64 mx-auto"
-                  />
-                </div>
-              ) : roundData.locationText ? (
+              {/* Clue Display: Malayalam Text Riddle > Image > Morse Code / Transmission fallback */}
+              {roundData.locationText ? (
                 <div className="bg-slate-950/70 p-4 rounded-2xl border border-slate-800/80 mb-4">
                   <h2 className="text-sm sm:text-base font-mono font-semibold text-amber-200/90 tracking-wide leading-relaxed whitespace-pre-wrap">
                     "{roundData.locationText}"
                   </h2>
+                </div>
+              ) : roundData.imagePath ? (
+                <div
+                  onClick={() => setZoomedImage(roundData.imagePath || null)}
+                  className="relative rounded-2xl overflow-hidden border border-amber-500/30 hover:border-amber-400 bg-slate-950 p-2 mb-4 cursor-zoom-in group transition duration-200"
+                  title="Click to zoom and inspect image"
+                >
+                  <img
+                    src={roundData.imagePath}
+                    alt="Location Clue Schematic"
+                    className="w-full h-auto object-contain rounded-xl max-h-64 mx-auto group-hover:scale-[1.01] transition duration-200"
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-xl pointer-events-none">
+                    <span className="px-3.5 py-2 bg-slate-900/95 border border-amber-400/60 text-amber-400 font-mono text-xs font-bold rounded-xl shadow-2xl flex items-center gap-2">
+                      <Maximize2 className="w-4 h-4" />
+                      <span>Click to Zoom & Inspect</span>
+                    </span>
+                  </div>
                 </div>
               ) : roundData.encodedNumbers ? (
                 <div className="rounded-2xl bg-slate-950 border border-slate-750 p-4 sm:p-6 mb-4 text-center space-y-2">
@@ -1257,12 +1286,26 @@ export default function PlayPage() {
 
                 {/* Object Clue Image */}
                 {roundData.imagePath && (
-                  <div className="rounded-2xl overflow-hidden border border-slate-750 bg-slate-950 p-2 mb-4">
+                  <div
+                    onClick={() => setZoomedImage(roundData.imagePath || null)}
+                    className="relative rounded-2xl overflow-hidden border border-amber-500/30 hover:border-amber-400 bg-slate-950 p-2 mb-4 cursor-zoom-in group transition duration-200"
+                    title="Click to zoom and inspect image"
+                  >
                     <img
                       src={roundData.imagePath}
                       alt="Object Clue"
-                      className="w-full h-auto object-contain rounded-xl max-h-72 mx-auto"
+                      className="w-full h-auto object-contain rounded-xl max-h-72 mx-auto group-hover:scale-[1.01] transition duration-200"
                     />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-xl pointer-events-none">
+                      <span className="px-3.5 py-2 bg-slate-900/95 border border-amber-400/60 text-amber-400 font-mono text-xs font-bold rounded-xl shadow-2xl flex items-center gap-2">
+                        <Maximize2 className="w-4 h-4" />
+                        <span>Click to Zoom & Inspect</span>
+                      </span>
+                    </div>
+                    <div className="absolute bottom-4 right-4 sm:hidden bg-slate-900/90 border border-amber-400/40 text-amber-400 px-2.5 py-1 rounded-lg text-[10px] font-mono flex items-center gap-1.5 shadow-lg">
+                      <Maximize2 className="w-3 h-3" />
+                      <span>Tap to Zoom</span>
+                    </div>
                   </div>
                 )}
 
@@ -1396,6 +1439,12 @@ export default function PlayPage() {
         winner={winnerData}
         isOpen={isWinnerModalOpen}
         onClose={() => setIsWinnerModalOpen(false)}
+      />
+
+      {/* Interactive Image Zoom Lightbox Modal */}
+      <ImageZoomModal
+        src={zoomedImage}
+        onClose={() => setZoomedImage(null)}
       />
     </div>
   );
