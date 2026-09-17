@@ -326,6 +326,7 @@ export default function PlayPage() {
     declaredAt?: string;
   } | null>(null);
   const [isWinnerModalOpen, setIsWinnerModalOpen] = useState(false);
+  const hasDismissedWinnerModalRef = React.useRef(false);
 
   // Fetch current game state
   const fetchCurrentRound = useCallback(async () => {
@@ -346,7 +347,9 @@ export default function PlayPage() {
 
       if (data.isFinished && data.winner) {
         setWinnerData(data.winner);
-        setIsWinnerModalOpen(true);
+        if (!hasDismissedWinnerModalRef.current) {
+          setIsWinnerModalOpen(true);
+        }
       }
 
       setRoundData((prev) => {
@@ -475,6 +478,7 @@ export default function PlayPage() {
       try {
         const payload = JSON.parse(e.data);
         setWinnerData(payload);
+        hasDismissedWinnerModalRef.current = false;
         setIsWinnerModalOpen(true);
       } catch {}
     });
@@ -1558,11 +1562,20 @@ export default function PlayPage() {
                   )}
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-slate-800 text-[11px] text-slate-400">
+                <div className="mt-4 pt-3 border-t border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
                   {roundData.winner?.teamId === team.teamId ? (
                     <span className="text-amber-400 font-bold">🏆 This is your team!</span>
                   ) : (
                     <span>Verified by Command Center</span>
+                  )}
+                  {winnerData && (
+                    <button
+                      type="button"
+                      onClick={() => setIsWinnerModalOpen(true)}
+                      className="text-amber-400 hover:text-amber-300 underline font-bold cursor-pointer transition"
+                    >
+                      View Fanfare 🎉
+                    </button>
                   )}
                 </div>
               </div>
@@ -1605,7 +1618,10 @@ export default function PlayPage() {
       <VictoryModal
         winner={winnerData}
         isOpen={isWinnerModalOpen}
-        onClose={() => setIsWinnerModalOpen(false)}
+        onClose={() => {
+          hasDismissedWinnerModalRef.current = true;
+          setIsWinnerModalOpen(false);
+        }}
       />
 
       {/* Interactive Image Zoom Lightbox Modal */}
