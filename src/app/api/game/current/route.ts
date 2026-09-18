@@ -4,8 +4,16 @@ import { getTeamFromRequest } from "@/lib/auth";
 import { jsonError, jsonSuccess } from "@/lib/security";
 import { applyClueTransformation, SubQuestion } from "@/lib/answer-validator";
 
+// ─── In-process caches (survive across warm lambda invocations) ───────────────
+
+// Cache event status for 10s (changes rarely)
 let cachedEvent: { status: string } | null = null;
 let cachedEventAt = 0;
+
+// Cache round configs for 2 minutes — they never change mid-event
+type RoundConfigRow = Awaited<ReturnType<typeof prisma.roundConfig.findMany>>[number];
+const roundConfigCache = new Map<string, { data: RoundConfigRow[]; at: number }>();
+const ROUND_CONFIG_TTL = 120_000; // 2 minutes
 
 async function getCachedEvent() {
   const now = Date.now();
@@ -24,6 +32,31 @@ async function getCachedEvent() {
   }
 }
 
+async function getCachedRoundConfig(teamId: string, roundNumber: number): Promise<RoundConfigRow[]> {
+  const cacheKey = `${roundNumber}:${teamId}`;
+  const defaultKey = `${roundNumber}:null`;
+  const now = Date.now();
+
+  const teamEntry = roundConfigCache.get(cacheKey);
+  if (teamEntry && now - teamEntry.at < ROUND_CONFIG_TTL) return teamEntry.data;
+
+  const defaultEntry = roundConfigCache.get(defaultKey);
+  if (defaultEntry && now - defaultEntry.at < ROUND_CONFIG_TTL) return defaultEntry.data;
+
+  // Cache miss — fetch both team-specific and default config in one query
+  const configs = await withRetry(() =>
+    prisma.roundConfig.findMany({
+      where: {
+        roundNumber,
+        OR: [{ teamId }, { teamId: null }],
+      },
+    })
+  );
+
+  roundConfigCache.set(cacheKey, { data: configs, at: now });
+  return configs;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const session = getTeamFromRequest(req);
@@ -31,6 +64,7 @@ export async function GET(req: NextRequest) {
       return jsonError("Unauthorized. Please log in with your Team ID.", 401);
     }
 
+    // Fetch team (with progress/finalist/winner) and event status in PARALLEL
     const [team, event] = await Promise.all([
       withRetry(() =>
         prisma.team.findUnique({
@@ -63,41 +97,41 @@ export async function GET(req: NextRequest) {
 
     const currentRound = progress.currentRound;
 
-    // Check if team has completed the hunt:
-    // A team has completed ONLY if they reached Round 5, OR Round 4 is marked FINISHED/FINAL_WAITING/FINAL_ACTIVE,
-    // OR whole event is FINISHED (and team completed Round 4), OR team is declared winner.
+    // Hunt completion check
     const isHuntComplete =
       currentRound >= 5 ||
-      (currentRound === 4 && (progress.state === "FINISHED" || progress.state === "FINAL_WAITING" || progress.state === "FINAL_ACTIVE")) ||
+      (currentRound === 4 &&
+        (progress.state === "FINISHED" ||
+          progress.state === "FINAL_WAITING" ||
+          progress.state === "FINAL_ACTIVE")) ||
       (event?.status === "FINISHED" && currentRound >= 4) ||
       !!team.winner;
 
     if (isHuntComplete) {
-      let myPosition: number | null = team.finalist?.position ?? null;
-      if (!myPosition && progress.round4CompletedAt) {
-        const earlierCompletions = await withRetry(() =>
-          prisma.teamProgress.count({
-            where: {
-              round4CompletedAt: {
-                lt: progress.round4CompletedAt!,
-              },
-              teamId: { not: team.teamId },
-            },
-          })
-        );
-        myPosition = earlierCompletions + 1;
-      }
+      // Run position-count and winner lookup in PARALLEL (was 3 sequential queries)
+      const needsPositionCount = !team.finalist?.position && !!progress.round4CompletedAt;
 
-      // Fetch official winner details
-      const winner = await withRetry(() =>
-        prisma.winner.findFirst({
-          include: {
-            team: {
-              include: { progress: true },
-            },
-          },
-        })
-      );
+      const [earlierCompletions, winner] = await Promise.all([
+        needsPositionCount
+          ? withRetry(() =>
+              prisma.teamProgress.count({
+                where: {
+                  round4CompletedAt: { lt: progress.round4CompletedAt! },
+                  teamId: { not: team.teamId },
+                },
+              })
+            )
+          : Promise.resolve(null as number | null),
+        withRetry(() =>
+          prisma.winner.findFirst({
+            include: { team: { include: { progress: true } } },
+          })
+        ),
+      ]);
+
+      const myPosition =
+        team.finalist?.position ??
+        (earlierCompletions !== null ? earlierCompletions + 1 : null);
 
       let winnerInfo = null;
       if (winner) {
@@ -106,19 +140,19 @@ export async function GET(req: NextRequest) {
           teamName: winner.team.teamName,
           position: winner.finalistPosition,
           declaredAt: winner.declaredAt.toISOString(),
-          completedAt: (winner.team.progress?.round4CompletedAt || winner.declaredAt).toISOString(),
-          startedAt: (winner.team.progress?.qualifierCompletedAt || winner.team.createdAt).toISOString(),
+          completedAt: (
+            winner.team.progress?.round4CompletedAt || winner.declaredAt
+          ).toISOString(),
+          startedAt: (
+            winner.team.progress?.qualifierCompletedAt || winner.team.createdAt
+          ).toISOString(),
         };
       } else {
-        // If not officially declared yet, find position 1 finisher
+        // No winner declared yet — check if position 1 finalist exists
         const firstFinisher = await withRetry(() =>
           prisma.finalist.findFirst({
             where: { position: 1 },
-            include: {
-              team: {
-                include: { progress: true },
-              },
-            },
+            include: { team: { include: { progress: true } } },
           })
         );
         if (firstFinisher) {
@@ -127,13 +161,18 @@ export async function GET(req: NextRequest) {
             teamName: firstFinisher.team.teamName,
             position: 1,
             declaredAt: null,
-            completedAt: (firstFinisher.team.progress?.round4CompletedAt || firstFinisher.qualifiedAt).toISOString(),
-            startedAt: (firstFinisher.team.progress?.qualifierCompletedAt || firstFinisher.team.createdAt).toISOString(),
+            completedAt: (
+              firstFinisher.team.progress?.round4CompletedAt ||
+              firstFinisher.qualifiedAt
+            ).toISOString(),
+            startedAt: (
+              firstFinisher.team.progress?.qualifierCompletedAt ||
+              firstFinisher.team.createdAt
+            ).toISOString(),
           };
         }
       }
 
-      const now = new Date();
       return jsonSuccess({
         state: "COMPLETED",
         isHuntComplete: true,
@@ -141,40 +180,36 @@ export async function GET(req: NextRequest) {
         roundNumber: 5,
         title: "All Stages Cleared",
         myPosition: myPosition ?? (team.finalist ? team.finalist.position : null),
-        completedAt: (progress.round4CompletedAt || team.finalist?.qualifiedAt || progress.completedAt || progress.lastActivityAt)?.toISOString(),
+        completedAt: (
+          progress.round4CompletedAt ||
+          team.finalist?.qualifiedAt ||
+          progress.completedAt ||
+          progress.lastActivityAt
+        )?.toISOString(),
         startedAt: (progress.qualifierCompletedAt || team.createdAt)?.toISOString(),
         winner: winnerInfo,
         totalAttempts: progress.totalAttempts,
         eventStatus: event?.status || "ACTIVE",
-        serverTime: now.toISOString(),
+        serverTime: new Date().toISOString(),
       });
     }
 
-    // Fetch config for Rounds 0 to 4 in a single query with transient retry
-    const configs = await withRetry(() =>
-      prisma.roundConfig.findMany({
-        where: {
-          roundNumber: currentRound,
-          OR: [{ teamId: team.teamId }, { teamId: null }],
-        },
-      })
-    );
-
-    const config = configs.find((c) => c.teamId === team.teamId) || configs.find((c) => c.teamId === null);
+    // ── Active team: fetch round config from in-process cache ────────────────
+    const configs = await getCachedRoundConfig(session.teamId, currentRound);
+    const config =
+      configs.find((c) => c.teamId === team.teamId) ||
+      configs.find((c) => c.teamId === null);
 
     if (!config) {
       return jsonError(`Round ${currentRound} configuration not found.`, 404);
     }
 
-    // Build secure sanitized response without leaking answers
+    // Build sanitized response (no answer leaking)
     let sanitizedClueText = config.clueText || "";
-
-    // Apply transformation if configured (Round 2)
     if (config.clueTransform && config.clueTransform !== "NORMAL") {
       sanitizedClueText = applyClueTransformation(sanitizedClueText, config.clueTransform);
     }
 
-    // Parse subQuestions for Round 3 or Qualifier, stripping acceptedAnswers
     let sanitizedSubQuestions = null;
     if (config.subQuestions) {
       try {

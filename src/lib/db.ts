@@ -11,8 +11,8 @@ function getOptimizedDatabaseUrl(): string | undefined {
   // If connection_limit is already explicitly defined, return as is
   if (url.includes("connection_limit")) return url;
   const separator = url.includes("?") ? "&" : "?";
-  // Enforce 1 connection per serverless/node worker and a 20s pool timeout
-  return `${url}${separator}connection_limit=1&pool_timeout=20`;
+  // Enforce 1 connection per serverless/node worker and a 5s pool timeout (fail fast, not hang 20s)
+  return `${url}${separator}connection_limit=1&pool_timeout=5`;
 }
 
 const dbUrl = getOptimizedDatabaseUrl();

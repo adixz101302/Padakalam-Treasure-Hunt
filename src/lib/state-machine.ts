@@ -31,8 +31,18 @@ export const ROUND_STATE_MAP: Record<number, { active: GameState; next: GameStat
  * Validates whether the team is eligible to submit an answer for the given round
  */
 export async function validateSubmissionEligibility(teamId: string, roundNumber: number) {
+  // Run event and team queries IN PARALLEL (was 2 sequential round trips)
+  const [event, team] = await Promise.all([
+    withRetry(() => prisma.event.findFirst(), 2, 200),
+    withRetry(() =>
+      prisma.team.findUnique({
+        where: { teamId },
+        include: { progress: true },
+      })
+    ),
+  ]);
+
   // 1. Check Event Status
-  const event = await withRetry(() => prisma.event.findFirst(), 2, 200);
   if (event?.status === "PAUSED") {
     return { allowed: false, reason: "The hunt is currently PAUSED by organizers. Submissions are temporarily frozen." };
   }
@@ -44,13 +54,6 @@ export async function validateSubmissionEligibility(teamId: string, roundNumber:
   }
 
   // 2. Check Team Status & Progress
-  const team = await withRetry(() =>
-    prisma.team.findUnique({
-      where: { teamId },
-      include: { progress: true },
-    })
-  );
-
   if (!team || !team.isActive) {
     return { allowed: false, reason: "Invalid or inactive team." };
   }
