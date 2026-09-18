@@ -6,52 +6,66 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const [event, teams, finalists, winner] = await withRetry(() =>
+    const [event, teams] = await withRetry(() =>
       Promise.all([
         prisma.event.findFirst(),
-      prisma.team.findMany({
-        select: {
-          teamId: true,
-          teamName: true,
-          isActive: true,
-          isDisqualified: true,
-          progress: {
-            select: {
-              currentRound: true,
-              currentStep: true,
-              state: true,
-              totalAttempts: true,
-              lastActivityAt: true,
-              round1CompletedAt: true,
-              round2CompletedAt: true,
-              round3CompletedAt: true,
-              round4CompletedAt: true,
-              completedAt: true,
+        prisma.team.findMany({
+          select: {
+            teamId: true,
+            teamName: true,
+            isActive: true,
+            isDisqualified: true,
+            progress: {
+              select: {
+                currentRound: true,
+                currentStep: true,
+                state: true,
+                totalAttempts: true,
+                lastActivityAt: true,
+                round1CompletedAt: true,
+                round2CompletedAt: true,
+                round3CompletedAt: true,
+                round4CompletedAt: true,
+                completedAt: true,
+              },
+            },
+            finalist: {
+              select: {
+                position: true,
+                qualifiedAt: true,
+              },
+            },
+            winner: {
+              select: {
+                finalistPosition: true,
+                declaredAt: true,
+              },
             },
           },
-          finalist: {
-            select: {
-              position: true,
-              qualifiedAt: true,
-            },
-          },
-          winner: {
-            select: {
-              finalistPosition: true,
-              declaredAt: true,
-            },
-          },
-        },
-        orderBy: { teamId: "asc" },
-      }),
-      prisma.finalist.findMany({
-        include: { team: { select: { teamId: true, teamName: true } } },
-        orderBy: { position: "asc" },
-      }),
-      prisma.winner.findFirst({
-        include: { team: { select: { teamId: true, teamName: true } } },
-      }),
-    ]));
+          orderBy: { teamId: "asc" },
+        }),
+      ])
+    );
+
+    const finalists = teams
+      .filter((t) => t.finalist !== null)
+      .map((t) => ({
+        position: t.finalist!.position,
+        teamId: t.teamId,
+        team: { teamName: t.teamName },
+        qualifiedAt: t.finalist!.qualifiedAt,
+      }))
+      .sort((a, b) => a.position - b.position);
+
+    const winnerTeam = teams.find((t) => t.winner !== null);
+    const winner = winnerTeam?.winner
+      ? {
+          teamId: winnerTeam.teamId,
+          team: { teamName: winnerTeam.teamName },
+          finalistPosition: winnerTeam.winner.finalistPosition,
+          declaredAt: winnerTeam.winner.declaredAt,
+        }
+      : null;
 
     let totalTeams = teams.length;
     let activeTeams = 0;

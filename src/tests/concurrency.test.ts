@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import prisma from "../lib/db";
 import { advanceTeamRound } from "../lib/state-machine";
 
@@ -10,40 +10,44 @@ describe("MANDATORY CONCURRENCY TEST: First-Five Finalists Selection", () => {
   );
 
   beforeAll(async () => {
-    // 1. Clean previous test finalists & test teams
-    await prisma.finalist.deleteMany();
-    await prisma.winner.deleteMany();
+    // 1. Clean previous test finalists & test teams safely
+    await prisma.finalist.deleteMany({
+      where: { teamId: { in: teamIds } },
+    });
+    await prisma.winner.deleteMany({
+      where: { teamId: { in: teamIds } },
+    });
+    await prisma.submissionAttempt.deleteMany({
+      where: { teamId: { in: teamIds } },
+    });
+    await prisma.teamProgress.deleteMany({
+      where: { teamId: { in: teamIds } },
+    });
+    await prisma.team.deleteMany({
+      where: { teamId: { in: teamIds } },
+    });
 
-    // 2. Create 25 teams ready at Round 4
-    for (const tid of teamIds) {
-      await prisma.team.upsert({
-        where: { teamId: tid },
-        update: {
-          isActive: true,
-          isDisqualified: false,
-          progress: {
-            upsert: {
+    // 2. Create 25 teams ready at Round 4 in parallel
+    await Promise.all(
+      teamIds.map((tid) =>
+        prisma.team.create({
+          data: {
+            teamId: tid,
+            teamName: `Concurrent Team ${tid}`,
+            progress: {
               create: { state: "ROUND_4_ACTIVE", currentRound: 4 },
-              update: { state: "ROUND_4_ACTIVE", currentRound: 4 },
             },
           },
-        },
-        create: {
-          teamId: tid,
-          teamName: `Concurrent Team ${tid}`,
-          progress: {
-            create: { state: "ROUND_4_ACTIVE", currentRound: 4 },
-          },
-        },
-      });
-    }
+        })
+      )
+    );
 
     await prisma.event.upsert({
       where: { id: "test-event-id" },
       update: { status: "ACTIVE", isLocked: false, finalStartedAt: null },
       create: { id: "test-event-id", name: "Test Event", status: "ACTIVE" },
     });
-  });
+  }, 60000);
 
   it("should atomically select EXACTLY 5 finalists from 25 simultaneous submissions", async () => {
     // Execute 25 simultaneous Round 4 completions in parallel
@@ -63,6 +67,7 @@ describe("MANDATORY CONCURRENCY TEST: First-Five Finalists Selection", () => {
 
     // 3. Verify Database records strictly match
     const dbFinalists = await prisma.finalist.findMany({
+      where: { teamId: { in: teamIds } },
       orderBy: { position: "asc" },
     });
     expect(dbFinalists.length).toBe(5);
@@ -76,30 +81,34 @@ describe("MANDATORY CONCURRENCY TEST: First-Five Finalists Selection", () => {
   }, 90000);
 
   it("should handle idempotent re-submission from an existing finalist without increasing count", async () => {
-    const dbFinalists = await prisma.finalist.findMany();
+    const dbFinalists = await prisma.finalist.findMany({
+      where: { teamId: { in: teamIds } },
+    });
     const existingFinalistTeamId = dbFinalists[0].teamId;
 
     const resubmission = await advanceTeamRound(existingFinalistTeamId, 4);
     expect(resubmission.isFinalist).toBe(true);
     expect(resubmission.position).toBe(dbFinalists[0].position);
 
-    const totalFinalistsAfter = await prisma.finalist.count();
+    const totalFinalistsAfter = await prisma.finalist.count({
+      where: { teamId: { in: teamIds } },
+    });
     expect(totalFinalistsAfter).toBe(5);
-  });
+  }, 30000);
 
   afterAll(async () => {
     // Clean up all concurrency test teams and test finalists
     await prisma.finalist.deleteMany({
       where: { teamId: { in: teamIds } },
     });
-    await prisma.teamProgress.deleteMany({
+    await prisma.submissionAttempt.deleteMany({
       where: { teamId: { in: teamIds } },
     });
-    await prisma.submissionAttempt.deleteMany({
+    await prisma.teamProgress.deleteMany({
       where: { teamId: { in: teamIds } },
     });
     await prisma.team.deleteMany({
       where: { teamId: { in: teamIds } },
     });
-  });
+  }, 60000);
 });

@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
       return jsonSuccess(overviewCache.data as Record<string, unknown>);
     }
 
-    const [event, teams, finalists, winner, recentLogs] = await withRetry(() =>
+    const [event, teams, recentLogs] = await withRetry(() =>
       Promise.all([
         prisma.event.findFirst(),
         prisma.team.findMany({
@@ -31,19 +31,34 @@ export async function GET(req: NextRequest) {
           },
           orderBy: { teamId: "asc" },
         }),
-        prisma.finalist.findMany({
-          include: { team: { select: { teamId: true, teamName: true } } },
-          orderBy: { position: "asc" },
-        }),
-        prisma.winner.findFirst({
-          include: { team: true },
-        }),
         prisma.auditLog.findMany({
           take: 25,
           orderBy: { createdAt: "desc" },
         }),
       ])
     );
+
+    // Derive finalists and winner from teams array (eliminating 2 redundant DB queries)
+    const finalists = teams
+      .filter((t) => t.finalist !== null)
+      .map((t) => ({
+        position: t.finalist!.position,
+        teamId: t.teamId,
+        team: { teamName: t.teamName },
+        qualifiedAt: t.finalist!.qualifiedAt,
+      }))
+      .sort((a, b) => a.position - b.position);
+
+    const winnerTeam = teams.find((t) => t.winner !== null);
+    const winner = winnerTeam?.winner
+      ? {
+          teamId: winnerTeam.teamId,
+          team: { teamName: winnerTeam.teamName },
+          finalistPosition: winnerTeam.winner.finalistPosition,
+          declaredBy: winnerTeam.winner.declaredBy,
+          declaredAt: winnerTeam.winner.declaredAt,
+        }
+      : null;
 
     // Calculate round distribution
     const distribution = {

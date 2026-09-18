@@ -19,6 +19,12 @@ export async function GET(req: NextRequest) {
           teamId: session.teamId,
           roundNumber,
         },
+        select: {
+          id: true,
+          status: true,
+          rejectReason: true,
+          submittedAt: true,
+        },
         orderBy: { submittedAt: "desc" },
       })
     );

@@ -330,22 +330,23 @@ export default function AdminDashboardPage() {
   }, [fetchOverview, fetchPuzzles, fetchPhotoSubmissions]);
 
   // Active Background Polling Interval for Admin Hub
-  // overview every 15s, photo-submissions every 10s — staggered to avoid hitting DB simultaneously
+  // Active Background Polling Interval for Admin Hub
+  // overview every 10s, photo-submissions every 30s — staggered to avoid hitting DB simultaneously
   useEffect(() => {
     if (!isAdminAuth) return;
 
     fetchPhotoSubmissions();
     const photoInterval = setInterval(() => {
       fetchPhotoSubmissions();
-    }, 10000);
+    }, 30000);
 
     let overviewInterval: ReturnType<typeof setInterval> | undefined;
     const overviewTimeout = setTimeout(() => {
       fetchOverview();
       overviewInterval = setInterval(() => {
         fetchOverview();
-      }, 15000);
-    }, 3000);
+      }, 10000);
+    }, 2000);
 
     return () => {
       clearInterval(photoInterval);
@@ -1747,19 +1748,28 @@ export default function AdminDashboardPage() {
                       className="p-3 bg-slate-950/80 border border-slate-800 rounded-xl flex items-center justify-between text-xs font-mono"
                     >
                       <div className="flex items-center gap-3">
-                        <div
-                          onClick={async () => {
-                            try {
-                              const res = await fetch(`/api/admin/photo-submissions/${sub.id}`);
-                              const data = await res.json();
-                              if (data.success) setSelectedPreviewImage(data.submission.imageUrl);
-                            } catch {}
-                          }}
-                          className="w-10 h-10 bg-slate-800 rounded-lg border border-slate-700 cursor-pointer flex items-center justify-center flex-shrink-0"
-                          title="Click to view photo"
-                        >
-                          <Eye className="w-4 h-4 text-amber-400/70" />
-                        </div>
+                        {sub.imageUrl && sub.imageUrl.startsWith("data:image") ? (
+                          <img
+                            src={sub.imageUrl}
+                            alt="Thumb"
+                            onClick={() => setSelectedPreviewImage(sub.imageUrl)}
+                            className="w-10 h-10 object-cover rounded-lg border border-slate-700 cursor-pointer"
+                          />
+                        ) : (
+                          <div
+                            onClick={async () => {
+                              try {
+                                const res = await fetch(`/api/admin/photo-submissions?id=${sub.id}`);
+                                const data = await res.json();
+                                if (data.success) setSelectedPreviewImage(data.submission.imageUrl);
+                              } catch {}
+                            }}
+                            className="w-10 h-10 bg-slate-800 rounded-lg border border-slate-700 cursor-pointer flex items-center justify-center flex-shrink-0"
+                            title="Click to view photo"
+                          >
+                            <Eye className="w-4 h-4 text-amber-400/70" />
+                          </div>
+                        )}
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="font-bold text-amber-400">{sub.teamId}</span>

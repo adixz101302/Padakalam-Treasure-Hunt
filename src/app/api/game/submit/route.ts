@@ -40,20 +40,19 @@ export async function POST(req: NextRequest) {
       return jsonError(eligibility.reason || "Submission not allowed.", 400);
     }
 
-    // Fetch round config (team override or default)
-    let config = await withRetry(() =>
-      prisma.roundConfig.findFirst({
-        where: { teamId: session.teamId, roundNumber },
+    // Fetch round config in 1 query (team override or default)
+    const configs = await withRetry(() =>
+      prisma.roundConfig.findMany({
+        where: {
+          roundNumber,
+          OR: [{ teamId: session.teamId }, { teamId: null }],
+        },
       })
     );
 
-    if (!config) {
-      config = await withRetry(() =>
-        prisma.roundConfig.findFirst({
-          where: { teamId: null, roundNumber },
-        })
-      );
-    }
+    const config =
+      configs.find((c) => c.teamId === session.teamId) ||
+      configs.find((c) => c.teamId === null);
 
     if (!config) {
       return jsonError("Round configuration not found.", 404);

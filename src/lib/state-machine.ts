@@ -159,22 +159,46 @@ export async function handleRound4AtomicQualification(teamId: string, now: Date)
           return;
         }
 
-        // 2. Count current finalists
-        const finalistCount = await withRetry(() => prisma.finalist.count());
+        // 2. Safely attempt finalist qualification with retry on P2002 unique constraint collision
+        let positionAssigned: number | null = null;
+        let qualifiedAsFinalist = false;
 
-        if (finalistCount < 5) {
-          const position = finalistCount + 1;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          const finalistCount = await withRetry(() => prisma.finalist.count());
 
-          // Insert new finalist record with unique position
-          await withRetry(() =>
-            prisma.finalist.create({
-              data: {
-                teamId,
-                position,
-                qualifiedAt: now,
-              },
-            })
-          );
+          if (finalistCount >= 5) {
+            // All 5 slots are filled
+            break;
+          }
+
+          const targetPosition = finalistCount + 1;
+          try {
+            await withRetry(() =>
+              prisma.finalist.create({
+                data: {
+                  teamId,
+                  position: targetPosition,
+                  qualifiedAt: now,
+                },
+              })
+            );
+            positionAssigned = targetPosition;
+            qualifiedAsFinalist = true;
+            break;
+          } catch (createErr: any) {
+            // If another instance inserted the same position simultaneously, retry
+            if (createErr?.code === "P2002") {
+              console.warn(
+                `[Finalist Collision] Position ${targetPosition} contention for Team ${teamId}. Retrying with latest count...`
+              );
+              continue;
+            }
+            throw createErr;
+          }
+        }
+
+        if (qualifiedAsFinalist && positionAssigned !== null) {
+          const position = positionAssigned;
 
           // Update team progress to FINAL_WAITING
           await withRetry(() =>

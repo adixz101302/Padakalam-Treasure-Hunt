@@ -61,6 +61,8 @@ model TeamProgress {
   lastActivityAt       DateTime  @default(now())
   metadata             String? // JSON metadata (e.g. completed question IDs)
   updatedAt            DateTime  @updatedAt
+
+  @@index([round4CompletedAt])
 }
 
 model RoundConfig {
@@ -115,6 +117,9 @@ model SubmissionAttempt {
   submittedAt DateTime @default(now())
   requestId   String?
   ipAddress   String?
+
+  @@index([teamId, roundNumber])
+  @@index([submittedAt])
 }
 
 model Winner {
@@ -133,6 +138,8 @@ model AuditLog {
   message   String
   details   String? // JSON
   createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 model PhotoSubmission {
@@ -146,4 +153,7 @@ model PhotoSubmission {
   submittedAt  DateTime  @default(now())
   reviewedAt   DateTime?
   reviewedBy   String?
+
+  @@index([status, submittedAt])
+  @@index([teamId, roundNumber])
 }
