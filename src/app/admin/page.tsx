@@ -334,23 +334,23 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     if (!isAdminAuth) return;
 
-    // Stagger: photo-submissions fires immediately, overview fires after 3s delay
     fetchPhotoSubmissions();
     const photoInterval = setInterval(() => {
       fetchPhotoSubmissions();
     }, 10000);
 
+    let overviewInterval: ReturnType<typeof setInterval> | undefined;
     const overviewTimeout = setTimeout(() => {
       fetchOverview();
-      const overviewInterval = setInterval(() => {
+      overviewInterval = setInterval(() => {
         fetchOverview();
       }, 15000);
-      return () => clearInterval(overviewInterval);
     }, 3000);
 
     return () => {
       clearInterval(photoInterval);
       clearTimeout(overviewTimeout);
+      if (overviewInterval) clearInterval(overviewInterval);
     };
   }, [isAdminAuth, fetchOverview, fetchPhotoSubmissions]);
 

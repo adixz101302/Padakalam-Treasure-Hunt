@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import prisma from "@/lib/db";
+import prisma, { withRetry } from "@/lib/db";
 import { getTeamFromRequest } from "@/lib/auth";
 import { jsonError, jsonSuccess, checkRateLimit } from "@/lib/security";
 import { validateAnswer, SubQuestion } from "@/lib/answer-validator";
@@ -27,13 +27,17 @@ export async function POST(req: NextRequest) {
     }
 
     // Fetch round config (team-specific or global)
-    let config = await prisma.roundConfig.findFirst({
-      where: { teamId: session.teamId, roundNumber },
-    });
+    let config = await withRetry(() =>
+      prisma.roundConfig.findFirst({
+        where: { teamId: session.teamId, roundNumber },
+      })
+    );
     if (!config) {
-      config = await prisma.roundConfig.findFirst({
-        where: { teamId: null, roundNumber },
-      });
+      config = await withRetry(() =>
+        prisma.roundConfig.findFirst({
+          where: { teamId: null, roundNumber },
+        })
+      );
     }
     if (!config) {
       return jsonError("Round configuration not found.", 404);
