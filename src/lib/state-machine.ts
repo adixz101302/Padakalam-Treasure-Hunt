@@ -1,4 +1,4 @@
-import prisma from "./db";
+import prisma, { withRetry } from "./db";
 import { logAuditEvent } from "./audit";
 import { broadcastEvent } from "./sse";
 
@@ -32,7 +32,7 @@ export const ROUND_STATE_MAP: Record<number, { active: GameState; next: GameStat
  */
 export async function validateSubmissionEligibility(teamId: string, roundNumber: number) {
   // 1. Check Event Status
-  const event = await prisma.event.findFirst();
+  const event = await withRetry(() => prisma.event.findFirst(), 2, 200);
   if (event?.status === "PAUSED") {
     return { allowed: false, reason: "The hunt is currently PAUSED by organizers. Submissions are temporarily frozen." };
   }
@@ -44,10 +44,12 @@ export async function validateSubmissionEligibility(teamId: string, roundNumber:
   }
 
   // 2. Check Team Status & Progress
-  const team = await prisma.team.findUnique({
-    where: { teamId },
-    include: { progress: true },
-  });
+  const team = await withRetry(() =>
+    prisma.team.findUnique({
+      where: { teamId },
+      include: { progress: true },
+    })
+  );
 
   if (!team || !team.isActive) {
     return { allowed: false, reason: "Invalid or inactive team." };
@@ -99,10 +101,12 @@ export async function advanceTeamRound(teamId: string, currentRoundNumber: numbe
   if (currentRoundNumber === 2) updateData.round2CompletedAt = now;
   if (currentRoundNumber === 3) updateData.round3CompletedAt = now;
 
-  const updatedProgress = await prisma.teamProgress.update({
-    where: { teamId },
-    data: updateData,
-  });
+  const updatedProgress = await withRetry(() =>
+    prisma.teamProgress.update({
+      where: { teamId },
+      data: updateData,
+    })
+  );
 
   await logAuditEvent(
     currentRoundNumber === 0 ? "QUALIFIER_COMPLETE" : (`ROUND_${currentRoundNumber}_COMPLETE` as any),
@@ -137,9 +141,9 @@ export async function handleRound4AtomicQualification(teamId: string, now: Date)
     queue = queue.catch(() => {}).then(async () => {
       try {
         // 1. Check if team is already a finalist
-        const existingFinalist = await prisma.finalist.findUnique({
-          where: { teamId },
-        });
+        const existingFinalist = await withRetry(() =>
+          prisma.finalist.findUnique({ where: { teamId } })
+        );
 
         if (existingFinalist) {
           resolve({
@@ -153,39 +157,43 @@ export async function handleRound4AtomicQualification(teamId: string, now: Date)
         }
 
         // 2. Count current finalists
-        const finalistCount = await prisma.finalist.count();
+        const finalistCount = await withRetry(() => prisma.finalist.count());
 
         if (finalistCount < 5) {
           const position = finalistCount + 1;
 
           // Insert new finalist record with unique position
-          await prisma.finalist.create({
-            data: {
-              teamId,
-              position,
-              qualifiedAt: now,
-            },
-          });
+          await withRetry(() =>
+            prisma.finalist.create({
+              data: {
+                teamId,
+                position,
+                qualifiedAt: now,
+              },
+            })
+          );
 
           // Update team progress to FINAL_WAITING
-          await prisma.teamProgress.update({
-            where: { teamId },
-            data: {
-              state: "FINAL_WAITING",
-              currentRound: 5,
-              round4CompletedAt: now,
-              lastActivityAt: now,
-            },
-          });
+          await withRetry(() =>
+            prisma.teamProgress.update({
+              where: { teamId },
+              data: {
+                state: "FINAL_WAITING",
+                currentRound: 5,
+                round4CompletedAt: now,
+                lastActivityAt: now,
+              },
+            })
+          );
 
           const allFinalistsReady = position === 5;
           if (allFinalistsReady) {
             const finalStartAt = new Date(Date.now() + 30000);
-            await prisma.event.updateMany({
-              data: {
-                finalStartedAt: finalStartAt,
-              },
-            });
+            await withRetry(() =>
+              prisma.event.updateMany({
+                data: { finalStartedAt: finalStartAt },
+              })
+            );
 
             broadcastEvent("FINAL_COUNTDOWN", {
               finalStartAt: finalStartAt.toISOString(),
@@ -218,15 +226,17 @@ export async function handleRound4AtomicQualification(teamId: string, now: Date)
           });
         } else {
           // 5 finalists already selected
-          await prisma.teamProgress.update({
-            where: { teamId },
-            data: {
-              state: "FINISHED",
-              round4CompletedAt: now,
-              lastActivityAt: now,
-              metadata: JSON.stringify({ reason: "SLOTS_FULL" }),
-            },
-          });
+          await withRetry(() =>
+            prisma.teamProgress.update({
+              where: { teamId },
+              data: {
+                state: "FINISHED",
+                round4CompletedAt: now,
+                lastActivityAt: now,
+                metadata: JSON.stringify({ reason: "SLOTS_FULL" }),
+              },
+            })
+          );
 
           await logAuditEvent(
             "ROUND_4_COMPLETE",

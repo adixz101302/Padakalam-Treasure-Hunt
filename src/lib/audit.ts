@@ -1,4 +1,4 @@
-import prisma from "./db";
+import prisma, { withRetry } from "./db";
 import { broadcastEvent } from "./sse";
 
 export type AuditEventType =
@@ -25,14 +25,16 @@ export async function logAuditEvent(
   details?: Record<string, unknown>
 ) {
   try {
-    const log = await prisma.auditLog.create({
-      data: {
-        eventType,
-        teamId: teamId || null,
-        message,
-        details: details ? JSON.stringify(details) : null,
-      },
-    });
+    const log = await withRetry(() =>
+      prisma.auditLog.create({
+        data: {
+          eventType,
+          teamId: teamId || null,
+          message,
+          details: details ? JSON.stringify(details) : null,
+        },
+      })
+    );
 
     // Broadcast in real-time to active admin dashboards
     broadcastEvent("AUDIT_LOG", {
