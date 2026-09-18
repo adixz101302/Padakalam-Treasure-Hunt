@@ -3,11 +3,21 @@ import prisma, { withRetry } from "@/lib/db";
 import { getAdminFromRequest } from "@/lib/auth";
 import { jsonError, jsonSuccess } from "@/lib/security";
 
+// Server-side cache: only hit DB once per 15s regardless of how many admin tabs are open
+let overviewCache: { data: unknown; at: number } | null = null;
+const OVERVIEW_TTL = 15_000;
+
 export async function GET(req: NextRequest) {
   try {
     const admin = getAdminFromRequest(req);
     if (!admin) {
       return jsonError("Unauthorized. Admin access required.", 401);
+    }
+
+    // Return cached response if fresh
+    const now = Date.now();
+    if (overviewCache && now - overviewCache.at < OVERVIEW_TTL) {
+      return jsonSuccess(overviewCache.data as Record<string, unknown>);
     }
 
     const [event, teams, finalists, winner, recentLogs] = await withRetry(() =>
@@ -63,7 +73,7 @@ export async function GET(req: NextRequest) {
       }
     });
 
-    return jsonSuccess({
+    const payload = {
       event: {
         id: event?.id,
         name: event?.name,
@@ -112,7 +122,12 @@ export async function GET(req: NextRequest) {
         details: l.details ? JSON.parse(l.details) : null,
         createdAt: l.createdAt,
       })),
-    });
+    };
+
+    // Store in server-side cache
+    overviewCache = { data: payload, at: Date.now() };
+
+    return jsonSuccess(payload);
   } catch (error) {
     console.error("Admin overview error:", error);
     return jsonError("Server error loading admin overview.", 500);
