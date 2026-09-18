@@ -4,6 +4,26 @@ import { getTeamFromRequest } from "@/lib/auth";
 import { jsonError, jsonSuccess } from "@/lib/security";
 import { applyClueTransformation, SubQuestion } from "@/lib/answer-validator";
 
+let cachedEvent: { status: string } | null = null;
+let cachedEventAt = 0;
+
+async function getCachedEvent() {
+  const now = Date.now();
+  if (cachedEvent && now - cachedEventAt < 10000) {
+    return cachedEvent;
+  }
+  try {
+    const e = await withRetry(() => prisma.event.findFirst({ select: { status: true } }), 2, 200);
+    if (e) {
+      cachedEvent = e;
+      cachedEventAt = now;
+    }
+    return cachedEvent || { status: "ACTIVE" };
+  } catch {
+    return cachedEvent || { status: "ACTIVE" };
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
     const session = getTeamFromRequest(req);
@@ -22,7 +42,7 @@ export async function GET(req: NextRequest) {
           },
         })
       ),
-      prisma.event.findFirst(),
+      getCachedEvent(),
     ]);
 
     if (!team || !team.isActive) {
@@ -55,25 +75,29 @@ export async function GET(req: NextRequest) {
     if (isHuntComplete) {
       let myPosition: number | null = team.finalist?.position ?? null;
       if (!myPosition && progress.round4CompletedAt) {
-        const earlierCompletions = await prisma.teamProgress.count({
-          where: {
-            round4CompletedAt: {
-              lt: progress.round4CompletedAt,
+        const earlierCompletions = await withRetry(() =>
+          prisma.teamProgress.count({
+            where: {
+              round4CompletedAt: {
+                lt: progress.round4CompletedAt!,
+              },
+              teamId: { not: team.teamId },
             },
-            teamId: { not: team.teamId },
-          },
-        });
+          })
+        );
         myPosition = earlierCompletions + 1;
       }
 
       // Fetch official winner details
-      const winner = await prisma.winner.findFirst({
-        include: {
-          team: {
-            include: { progress: true },
+      const winner = await withRetry(() =>
+        prisma.winner.findFirst({
+          include: {
+            team: {
+              include: { progress: true },
+            },
           },
-        },
-      });
+        })
+      );
 
       let winnerInfo = null;
       if (winner) {
@@ -87,14 +111,16 @@ export async function GET(req: NextRequest) {
         };
       } else {
         // If not officially declared yet, find position 1 finisher
-        const firstFinisher = await prisma.finalist.findFirst({
-          where: { position: 1 },
-          include: {
-            team: {
-              include: { progress: true },
+        const firstFinisher = await withRetry(() =>
+          prisma.finalist.findFirst({
+            where: { position: 1 },
+            include: {
+              team: {
+                include: { progress: true },
+              },
             },
-          },
-        });
+          })
+        );
         if (firstFinisher) {
           winnerInfo = {
             teamId: firstFinisher.team.teamId,
@@ -124,13 +150,15 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Fetch config for Rounds 0 to 4 in a single query
-    const configs = await prisma.roundConfig.findMany({
-      where: {
-        roundNumber: currentRound,
-        OR: [{ teamId: team.teamId }, { teamId: null }],
-      },
-    });
+    // Fetch config for Rounds 0 to 4 in a single query with transient retry
+    const configs = await withRetry(() =>
+      prisma.roundConfig.findMany({
+        where: {
+          roundNumber: currentRound,
+          OR: [{ teamId: team.teamId }, { teamId: null }],
+        },
+      })
+    );
 
     const config = configs.find((c) => c.teamId === team.teamId) || configs.find((c) => c.teamId === null);
 

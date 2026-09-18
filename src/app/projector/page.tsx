@@ -124,35 +124,42 @@ export default function ProjectorBoardPage() {
     }
   }, []);
 
-  // Initial Load + Auto Refresh (3.5s fail-safe polling)
+  // Initial Load + Auto Refresh (5s fail-safe polling)
   useEffect(() => {
     fetchBoardData();
-    const interval = setInterval(fetchBoardData, 3500);
+    const interval = setInterval(fetchBoardData, 5000);
     return () => clearInterval(interval);
   }, [fetchBoardData]);
 
   // Real-time SSE Connection
   useEffect(() => {
-    const sse = new EventSource("/api/sse");
+    let sse: EventSource | null = null;
+    try {
+      sse = new EventSource("/api/sse");
 
-    sse.addEventListener("TEAM_PROGRESS", () => {
-      fetchBoardData();
-    });
+      sse.onerror = () => {
+        sse?.close();
+      };
 
-    sse.addEventListener("TEAM_STATUS", () => {
-      fetchBoardData();
-    });
+      sse.addEventListener("TEAM_PROGRESS", () => {
+        fetchBoardData();
+      });
 
-    sse.addEventListener("EVENT_CONTROL", () => {
-      fetchBoardData();
-    });
+      sse.addEventListener("TEAM_STATUS", () => {
+        fetchBoardData();
+      });
 
-    sse.addEventListener("WINNER_DECLARED", () => {
-      fetchBoardData();
-    });
+      sse.addEventListener("EVENT_CONTROL", () => {
+        fetchBoardData();
+      });
+
+      sse.addEventListener("WINNER_DECLARED", () => {
+        fetchBoardData();
+      });
+    } catch {}
 
     return () => {
-      sse.close();
+      sse?.close();
     };
   }, [fetchBoardData]);
 

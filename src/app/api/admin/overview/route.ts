@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import prisma from "@/lib/db";
+import prisma, { withRetry } from "@/lib/db";
 import { getAdminFromRequest } from "@/lib/auth";
 import { jsonError, jsonSuccess } from "@/lib/security";
 
@@ -10,29 +10,30 @@ export async function GET(req: NextRequest) {
       return jsonError("Unauthorized. Admin access required.", 401);
     }
 
-    const event = await prisma.event.findFirst();
-    const teams = await prisma.team.findMany({
-      include: {
-        progress: true,
-        finalist: true,
-        winner: true,
-      },
-      orderBy: { teamId: "asc" },
-    });
-
-    const finalists = await prisma.finalist.findMany({
-      include: { team: { select: { teamId: true, teamName: true } } },
-      orderBy: { position: "asc" },
-    });
-
-    const winner = await prisma.winner.findFirst({
-      include: { team: true },
-    });
-
-    const recentLogs = await prisma.auditLog.findMany({
-      take: 25,
-      orderBy: { createdAt: "desc" },
-    });
+    const [event, teams, finalists, winner, recentLogs] = await withRetry(() =>
+      Promise.all([
+        prisma.event.findFirst(),
+        prisma.team.findMany({
+          include: {
+            progress: true,
+            finalist: true,
+            winner: true,
+          },
+          orderBy: { teamId: "asc" },
+        }),
+        prisma.finalist.findMany({
+          include: { team: { select: { teamId: true, teamName: true } } },
+          orderBy: { position: "asc" },
+        }),
+        prisma.winner.findFirst({
+          include: { team: true },
+        }),
+        prisma.auditLog.findMany({
+          take: 25,
+          orderBy: { createdAt: "desc" },
+        }),
+      ])
+    );
 
     // Calculate round distribution
     const distribution = {

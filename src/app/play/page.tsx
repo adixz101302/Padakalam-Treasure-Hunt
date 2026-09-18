@@ -364,7 +364,12 @@ export default function PlayPage() {
       });
 
       if (data.roundNumber === 2) {
-        fetchPhotoStatus();
+        setPhotoStatus((curr) => {
+          if (!curr || curr.status === "PENDING") {
+            fetchPhotoStatus();
+          }
+          return curr;
+        });
       } else {
         setSelectedPhoto(null);
         setPhotoStatus(null);
@@ -403,13 +408,27 @@ export default function PlayPage() {
     fetchSession();
   }, [router, fetchCurrentRound]);
 
-  // Active Background Polling Interval (every 3 seconds for instant lively updates)
+  // Active Background Polling with jitter (5s-6.5s) to prevent thundering herd spikes
   useEffect(() => {
     if (!team) return;
-    const interval = setInterval(() => {
-      fetchCurrentRound();
-    }, 3000);
-    return () => clearInterval(interval);
+    let timer: NodeJS.Timeout;
+    let isCancelled = false;
+
+    const scheduleNextPoll = () => {
+      const delay = 5000 + Math.floor(Math.random() * 1500);
+      timer = setTimeout(async () => {
+        if (!isCancelled) {
+          await fetchCurrentRound();
+          scheduleNextPoll();
+        }
+      }, delay);
+    };
+
+    scheduleNextPoll();
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
   }, [team, fetchCurrentRound]);
 
   // Auto-clear photo-related feedback banners when outside Round 2
@@ -421,84 +440,94 @@ export default function PlayPage() {
     }
   }, [roundData?.roundNumber]);
 
-  // Real-time Server-Sent Events Listener
+  // Real-time Server-Sent Events Listener (gracefully closes if serverless or unsupported)
   useEffect(() => {
-    const eventSource = new EventSource("/api/sse");
+    let eventSource: EventSource | null = null;
+    try {
+      eventSource = new EventSource("/api/sse");
 
-    eventSource.addEventListener("TEAM_PROGRESS", (e) => {
-      try {
-        const payload = JSON.parse(e.data);
-        if (team && payload.teamId === team.teamId) {
-          fetchCurrentRound();
-        }
-      } catch {}
-    });
+      eventSource.onerror = () => {
+        // Close immediately on error to avoid infinite reconnect loops starving serverless concurrency
+        eventSource?.close();
+      };
 
-    eventSource.addEventListener("PHOTO_VERIFIED", (e) => {
-      try {
-        const payload = JSON.parse(e.data);
-        if (team && payload.teamId === team.teamId) {
-          if (payload.status === "APPROVED") {
-            setFeedback({
-              type: "success",
-              message: "🎉 PHOTO APPROVED BY ORGANIZERS! ADVANCING TO ROUND 3...",
-            });
-            setSelectedPhoto(null);
-            setPhotoStatus(null);
+      eventSource.addEventListener("TEAM_PROGRESS", (e) => {
+        try {
+          const payload = JSON.parse(e.data);
+          if (team && payload.teamId === team.teamId) {
             fetchCurrentRound();
-          } else {
-            setPhotoStatus({
-              hasSubmission: true,
-              status: "REJECTED",
-              rejectReason: payload.rejectReason,
-            });
-            setFeedback({
-              type: "error",
-              message: `❌ PHOTO REJECTED: ${payload.rejectReason || "Incorrect image. Please try again."}`,
-            });
           }
-        }
-      } catch {}
-    });
+        } catch {}
+      });
 
-    eventSource.addEventListener("FINALIST_UPDATE", () => {
-      fetchCurrentRound();
-    });
+      eventSource.addEventListener("PHOTO_VERIFIED", (e) => {
+        try {
+          const payload = JSON.parse(e.data);
+          if (team && payload.teamId === team.teamId) {
+            if (payload.status === "APPROVED") {
+              setFeedback({
+                type: "success",
+                message: "🎉 PHOTO APPROVED BY ORGANIZERS! ADVANCING TO ROUND 3...",
+              });
+              setSelectedPhoto(null);
+              setPhotoStatus(null);
+              fetchCurrentRound();
+            } else {
+              setPhotoStatus({
+                hasSubmission: true,
+                status: "REJECTED",
+                rejectReason: payload.rejectReason,
+              });
+              setFeedback({
+                type: "error",
+                message: `❌ PHOTO REJECTED: ${payload.rejectReason || "Incorrect image. Please try again."}`,
+              });
+            }
+          }
+        } catch {}
+      });
 
-    eventSource.addEventListener("FINAL_COUNTDOWN", (e) => {
-      try {
-        const payload = JSON.parse(e.data);
-        if (payload.finalStartAt) {
-          fetchCurrentRound();
-        }
-      } catch {}
-    });
+      eventSource.addEventListener("FINALIST_UPDATE", () => {
+        fetchCurrentRound();
+      });
 
-    eventSource.addEventListener("WINNER_DECLARED", (e) => {
-      try {
-        const payload = JSON.parse(e.data);
-        setWinnerData(payload);
-        hasDismissedWinnerModalRef.current = false;
-        setIsWinnerModalOpen(true);
-      } catch {}
-    });
+      eventSource.addEventListener("FINAL_COUNTDOWN", (e) => {
+        try {
+          const payload = JSON.parse(e.data);
+          if (payload.finalStartAt) {
+            fetchCurrentRound();
+          }
+        } catch {}
+      });
 
-    eventSource.addEventListener("EVENT_STATUS", (e) => {
-      try {
-        const payload = JSON.parse(e.data);
-        if (payload.status === "PAUSED") {
-          setFeedback({
-            type: "info",
-            message: "The hunt has been paused by organizers. Submissions are temporarily frozen.",
-          });
-        } else {
-          fetchCurrentRound();
-        }
-      } catch {}
-    });
+      eventSource.addEventListener("WINNER_DECLARED", (e) => {
+        try {
+          const payload = JSON.parse(e.data);
+          setWinnerData(payload);
+          hasDismissedWinnerModalRef.current = false;
+          setIsWinnerModalOpen(true);
+        } catch {}
+      });
+
+      eventSource.addEventListener("EVENT_STATUS", (e) => {
+        try {
+          const payload = JSON.parse(e.data);
+          if (payload.status === "PAUSED") {
+            setFeedback({
+              type: "info",
+              message: "The hunt has been paused by organizers. Submissions are temporarily frozen.",
+            });
+          } else {
+            fetchCurrentRound();
+          }
+        } catch {}
+      });
+    } catch {
+      // SSE not supported or blocked
+    }
 
     return () => {
-      eventSource.close();
+      eventSource?.close();
     };
   }, [team, fetchCurrentRound]);
 

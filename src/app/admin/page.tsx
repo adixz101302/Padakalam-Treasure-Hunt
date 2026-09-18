@@ -329,14 +329,14 @@ export default function AdminDashboardPage() {
     checkAdminSession();
   }, [fetchOverview, fetchPuzzles, fetchPhotoSubmissions]);
 
-  // Active Background Polling Interval for Admin Hub (every 3 seconds)
+  // Active Background Polling Interval for Admin Hub (every 5 seconds)
   useEffect(() => {
     if (!isAdminAuth) return;
     fetchPhotoSubmissions();
     const interval = setInterval(() => {
       fetchOverview();
       fetchPhotoSubmissions();
-    }, 3000);
+    }, 5000);
     return () => clearInterval(interval);
   }, [isAdminAuth, fetchOverview, fetchPhotoSubmissions]);
 
@@ -344,36 +344,43 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     if (!isAdminAuth) return;
 
-    const eventSource = new EventSource("/api/sse");
+    let eventSource: EventSource | null = null;
+    try {
+      eventSource = new EventSource("/api/sse");
 
-    eventSource.addEventListener("PHOTO_SUBMITTED", () => {
-      fetchPhotoSubmissions();
-      fetchOverview();
-    });
+      eventSource.onerror = () => {
+        eventSource?.close();
+      };
 
-    eventSource.addEventListener("AUDIT_LOG", () => {
-      fetchOverview();
-    });
+      eventSource.addEventListener("PHOTO_SUBMITTED", () => {
+        fetchPhotoSubmissions();
+        fetchOverview();
+      });
 
-    eventSource.addEventListener("TEAM_PROGRESS", () => {
-      fetchOverview();
-      fetchPhotoSubmissions();
-    });
+      eventSource.addEventListener("AUDIT_LOG", () => {
+        fetchOverview();
+      });
 
-    eventSource.addEventListener("FINALIST_UPDATE", () => {
-      fetchOverview();
-    });
+      eventSource.addEventListener("TEAM_PROGRESS", () => {
+        fetchOverview();
+        fetchPhotoSubmissions();
+      });
 
-    eventSource.addEventListener("WINNER_DECLARED", () => {
-      fetchOverview();
-    });
+      eventSource.addEventListener("FINALIST_UPDATE", () => {
+        fetchOverview();
+      });
 
-    eventSource.addEventListener("EVENT_STATUS", () => {
-      fetchOverview();
-    });
+      eventSource.addEventListener("WINNER_DECLARED", () => {
+        fetchOverview();
+      });
+
+      eventSource.addEventListener("EVENT_STATUS", () => {
+        fetchOverview();
+      });
+    } catch {}
 
     return () => {
-      eventSource.close();
+      eventSource?.close();
     };
   }, [isAdminAuth, fetchOverview, fetchPhotoSubmissions]);
 

@@ -5,6 +5,13 @@ import { getAdminFromRequest, getTeamFromRequest } from "@/lib/auth";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
+  // If running in a serverless environment (e.g. Vercel), long-lived SSE connections
+  // starve serverless concurrency limits and cannot broadcast across instances.
+  // Returning 204 tells the browser not to hold open the connection or retry.
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    return new Response(null, { status: 204 });
+  }
+
   const admin = getAdminFromRequest(req);
   const team = getTeamFromRequest(req);
 

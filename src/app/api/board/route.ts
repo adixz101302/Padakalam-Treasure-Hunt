@@ -1,13 +1,14 @@
 import { NextRequest } from "next/server";
-import prisma from "@/lib/db";
+import prisma, { withRetry } from "@/lib/db";
 import { jsonSuccess, jsonError } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const [event, teams, finalists, winner] = await Promise.all([
-      prisma.event.findFirst(),
+    const [event, teams, finalists, winner] = await withRetry(() =>
+      Promise.all([
+        prisma.event.findFirst(),
       prisma.team.findMany({
         select: {
           teamId: true,
@@ -50,7 +51,7 @@ export async function GET(req: NextRequest) {
       prisma.winner.findFirst({
         include: { team: { select: { teamId: true, teamName: true } } },
       }),
-    ]);
+    ]));
 
     let totalTeams = teams.length;
     let activeTeams = 0;

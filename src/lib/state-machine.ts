@@ -134,7 +134,7 @@ let queue: Promise<any> = Promise.resolve();
  */
 export async function handleRound4AtomicQualification(teamId: string, now: Date) {
   return new Promise<any>((resolve, reject) => {
-    queue = queue.then(async () => {
+    queue = queue.catch(() => {}).then(async () => {
       try {
         // 1. Check if team is already a finalist
         const existingFinalist = await prisma.finalist.findUnique({
