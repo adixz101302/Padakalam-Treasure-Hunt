@@ -329,15 +329,29 @@ export default function AdminDashboardPage() {
     checkAdminSession();
   }, [fetchOverview, fetchPuzzles, fetchPhotoSubmissions]);
 
-  // Active Background Polling Interval for Admin Hub (every 5 seconds)
+  // Active Background Polling Interval for Admin Hub
+  // overview every 15s, photo-submissions every 10s — staggered to avoid hitting DB simultaneously
   useEffect(() => {
     if (!isAdminAuth) return;
+
+    // Stagger: photo-submissions fires immediately, overview fires after 3s delay
     fetchPhotoSubmissions();
-    const interval = setInterval(() => {
-      fetchOverview();
+    const photoInterval = setInterval(() => {
       fetchPhotoSubmissions();
-    }, 5000);
-    return () => clearInterval(interval);
+    }, 10000);
+
+    const overviewTimeout = setTimeout(() => {
+      fetchOverview();
+      const overviewInterval = setInterval(() => {
+        fetchOverview();
+      }, 15000);
+      return () => clearInterval(overviewInterval);
+    }, 3000);
+
+    return () => {
+      clearInterval(photoInterval);
+      clearTimeout(overviewTimeout);
+    };
   }, [isAdminAuth, fetchOverview, fetchPhotoSubmissions]);
 
   // Real-time SSE for Admin Hub
@@ -1674,19 +1688,24 @@ export default function AdminDashboardPage() {
                         </span>
                       </div>
 
-                      {/* Photo Preview Thumbnail */}
+                      {/* Photo Preview Thumbnail — lazy loaded on click to avoid egress */}
                       <div
-                        onClick={() => setSelectedPreviewImage(sub.imageUrl)}
-                        className="relative rounded-2xl overflow-hidden border border-slate-700 bg-slate-950 cursor-pointer group"
+                        onClick={async () => {
+                          try {
+                            const res = await fetch(`/api/admin/photo-submissions/${sub.id}`);
+                            const data = await res.json();
+                            if (data.success) setSelectedPreviewImage(data.submission.imageUrl);
+                          } catch {}
+                        }}
+                        className="relative rounded-2xl overflow-hidden border border-slate-700 bg-slate-950 cursor-pointer group h-48 flex items-center justify-center"
                       >
-                        <img
-                          src={sub.imageUrl}
-                          alt={`Submission by ${sub.teamId}`}
-                          className="w-full h-48 object-cover group-hover:scale-105 transition duration-300"
-                        />
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-500">
+                          <Eye className="w-8 h-8 text-amber-400/60" />
+                          <span className="text-xs font-mono text-amber-400/80">Click to Load Photo</span>
+                        </div>
                         <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
                           <span className="px-3 py-1 bg-slate-900/90 text-white font-mono text-xs rounded-lg border border-slate-700 flex items-center gap-1.5">
-                            <Eye className="w-3.5 h-3.5 text-amber-400" /> Click to Enlarge
+                            <Eye className="w-3.5 h-3.5 text-amber-400" /> Click to View
                           </span>
                         </div>
                       </div>
@@ -1728,12 +1747,19 @@ export default function AdminDashboardPage() {
                       className="p-3 bg-slate-950/80 border border-slate-800 rounded-xl flex items-center justify-between text-xs font-mono"
                     >
                       <div className="flex items-center gap-3">
-                        <img
-                          src={sub.imageUrl}
-                          alt="Thumb"
-                          onClick={() => setSelectedPreviewImage(sub.imageUrl)}
-                          className="w-10 h-10 object-cover rounded-lg border border-slate-700 cursor-pointer"
-                        />
+                        <div
+                          onClick={async () => {
+                            try {
+                              const res = await fetch(`/api/admin/photo-submissions/${sub.id}`);
+                              const data = await res.json();
+                              if (data.success) setSelectedPreviewImage(data.submission.imageUrl);
+                            } catch {}
+                          }}
+                          className="w-10 h-10 bg-slate-800 rounded-lg border border-slate-700 cursor-pointer flex items-center justify-center flex-shrink-0"
+                          title="Click to view photo"
+                        >
+                          <Eye className="w-4 h-4 text-amber-400/70" />
+                        </div>
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="font-bold text-amber-400">{sub.teamId}</span>

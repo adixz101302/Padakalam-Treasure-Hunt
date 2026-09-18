@@ -13,7 +13,15 @@ export async function GET(req: NextRequest) {
     const submissions = await withRetry(() =>
       prisma.photoSubmission.findMany({
         orderBy: { submittedAt: "desc" },
-        include: {
+        // IMPORTANT: exclude imageUrl from list — base64 blobs cause massive egress on every poll
+        // The full image is only fetched when admin opens the review modal
+        select: {
+          id: true,
+          teamId: true,
+          roundNumber: true,
+          status: true,
+          rejectReason: true,
+          submittedAt: true,
           team: {
             select: {
               teamId: true,
