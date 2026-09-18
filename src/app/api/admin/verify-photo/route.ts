@@ -20,10 +20,12 @@ export async function POST(req: NextRequest) {
       return jsonError("Invalid submissionId or action.", 400);
     }
 
-    const submission = await prisma.photoSubmission.findUnique({
-      where: { id: submissionId },
-      include: { team: true },
-    });
+    const submission = await withRetry(() =>
+      prisma.photoSubmission.findUnique({
+        where: { id: submissionId },
+        include: { team: true },
+      })
+    );
 
     if (!submission) {
       return jsonError("Photo submission record not found.", 404);
@@ -31,15 +33,17 @@ export async function POST(req: NextRequest) {
 
     if (action === "APPROVE") {
       // Mark submission as APPROVED and clear heavy base64 string to keep DB ultra-light!
-      await prisma.photoSubmission.update({
-        where: { id: submissionId },
-        data: {
-          status: "APPROVED",
-          imageUrl: "[APPROVED_CLEARED]", // Clear image data after approval to save DB space
-          reviewedAt: new Date(),
-          reviewedBy: admin.username,
-        },
-      });
+      await withRetry(() =>
+        prisma.photoSubmission.update({
+          where: { id: submissionId },
+          data: {
+            status: "APPROVED",
+            imageUrl: "[APPROVED_CLEARED]", // Clear image data after approval to save DB space
+            reviewedAt: new Date(),
+            reviewedBy: admin.username,
+          },
+        })
+      );
 
       // Advance team to Round 3!
       await withRetry(() =>
@@ -56,13 +60,15 @@ export async function POST(req: NextRequest) {
       );
 
       // Create Audit Log
-      await prisma.auditLog.create({
-        data: {
-          eventType: "ROUND_DONE",
-          teamId: submission.teamId,
-          message: `Admin approved photo for Team ${submission.teamId}. Team advanced to Round 3!`,
-        },
-      });
+      await withRetry(() =>
+        prisma.auditLog.create({
+          data: {
+            eventType: "ROUND_DONE",
+            teamId: submission.teamId,
+            message: `Admin approved photo for Team ${submission.teamId}. Team advanced to Round 3!`,
+          },
+        })
+      );
 
       // Broadcast SSE event for real-time UI updates
       broadcastEvent("TEAM_PROGRESS", { teamId: submission.teamId, currentRound: 3 });
@@ -74,25 +80,29 @@ export async function POST(req: NextRequest) {
       });
     } else {
       // Mark submission as REJECTED and clear image payload
-      await prisma.photoSubmission.update({
-        where: { id: submissionId },
-        data: {
-          status: "REJECTED",
-          imageUrl: "[REJECTED_CLEARED]",
-          rejectReason: rejectReason || "Incorrect location or image unclear. Please capture a clear photo of your target location.",
-          reviewedAt: new Date(),
-          reviewedBy: admin.username,
-        },
-      });
+      await withRetry(() =>
+        prisma.photoSubmission.update({
+          where: { id: submissionId },
+          data: {
+            status: "REJECTED",
+            imageUrl: "[REJECTED_CLEARED]",
+            rejectReason: rejectReason || "Incorrect location or image unclear. Please capture a clear photo of your target location.",
+            reviewedAt: new Date(),
+            reviewedBy: admin.username,
+          },
+        })
+      );
 
       // Create Audit Log
-      await prisma.auditLog.create({
-        data: {
-          eventType: "ADMIN_ACTION",
-          teamId: submission.teamId,
-          message: `Admin rejected photo for Team ${submission.teamId}: "${rejectReason || "No reason specified"}"`,
-        },
-      });
+      await withRetry(() =>
+        prisma.auditLog.create({
+          data: {
+            eventType: "ADMIN_ACTION",
+            teamId: submission.teamId,
+            message: `Admin rejected photo for Team ${submission.teamId}: "${rejectReason || "No reason specified"}"`,
+          },
+        })
+      );
 
       // Broadcast SSE event
       broadcastEvent("PHOTO_VERIFIED", {

@@ -36,43 +36,51 @@ export async function POST(req: NextRequest) {
     }
 
     // Upsert photo submission record with status PENDING
-    const existing = await prisma.photoSubmission.findFirst({
-      where: {
-        teamId: session.teamId,
-        roundNumber,
-        status: "PENDING",
-      },
-    });
+    const existing = await withRetry(() =>
+      prisma.photoSubmission.findFirst({
+        where: {
+          teamId: session.teamId,
+          roundNumber,
+          status: "PENDING",
+        },
+      })
+    );
 
     let submission;
     if (existing) {
-      submission = await prisma.photoSubmission.update({
-        where: { id: existing.id },
-        data: {
-          imageUrl: photoData,
-          submittedAt: new Date(),
-          rejectReason: null,
-        },
-      });
+      submission = await withRetry(() =>
+        prisma.photoSubmission.update({
+          where: { id: existing.id },
+          data: {
+            imageUrl: photoData,
+            submittedAt: new Date(),
+            rejectReason: null,
+          },
+        })
+      );
     } else {
-      submission = await prisma.photoSubmission.create({
-        data: {
-          teamId: session.teamId,
-          roundNumber,
-          imageUrl: photoData,
-          status: "PENDING",
-        },
-      });
+      submission = await withRetry(() =>
+        prisma.photoSubmission.create({
+          data: {
+            teamId: session.teamId,
+            roundNumber,
+            imageUrl: photoData,
+            status: "PENDING",
+          },
+        })
+      );
     }
 
     // Create Audit Log
-    await prisma.auditLog.create({
-      data: {
-        eventType: "PHOTO_SUBMITTED",
-        teamId: session.teamId,
-        message: `Team ${session.teamId} uploaded a photo for Round ${roundNumber} verification.`,
-      },
-    });
+    await withRetry(() =>
+      prisma.auditLog.create({
+        data: {
+          eventType: "PHOTO_SUBMITTED",
+          teamId: session.teamId,
+          message: `Team ${session.teamId} uploaded a photo for Round ${roundNumber} verification.`,
+        },
+      })
+    );
 
     // Broadcast SSE update so admin panel updates live!
     broadcastEvent("PHOTO_SUBMITTED", {

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import prisma from "@/lib/db";
+import prisma, { withRetry } from "@/lib/db";
 import { getTeamFromRequest } from "@/lib/auth";
 import { jsonError, jsonSuccess, checkRateLimit } from "@/lib/security";
 import { validateSubmissionEligibility } from "@/lib/state-machine";
@@ -37,14 +37,18 @@ export async function POST(req: NextRequest) {
     }
 
     // Fetch round config (team override or default)
-    let config = await prisma.roundConfig.findFirst({
-      where: { teamId: session.teamId, roundNumber },
-    });
+    let config = await withRetry(() =>
+      prisma.roundConfig.findFirst({
+        where: { teamId: session.teamId, roundNumber },
+      })
+    );
 
     if (!config) {
-      config = await prisma.roundConfig.findFirst({
-        where: { teamId: null, roundNumber },
-      });
+      config = await withRetry(() =>
+        prisma.roundConfig.findFirst({
+          where: { teamId: null, roundNumber },
+        })
+      );
     }
 
     if (!config) {
@@ -67,16 +71,18 @@ export async function POST(req: NextRequest) {
 
     // Record submission attempt for audit log
     const ipAddress = req.headers.get("x-forwarded-for") || "unknown";
-    await prisma.submissionAttempt.create({
-      data: {
-        teamId: session.teamId,
-        roundNumber,
-        stepNumber: 0, // Step 0 = Location Step
-        rawInput: `[LOCATION_STEP]: ${locationInput}`,
-        isCorrect,
-        ipAddress,
-      },
-    });
+    await withRetry(() =>
+      prisma.submissionAttempt.create({
+        data: {
+          teamId: session.teamId,
+          roundNumber,
+          stepNumber: 0, // Step 0 = Location Step
+          rawInput: `[LOCATION_STEP]: ${locationInput}`,
+          isCorrect,
+          ipAddress,
+        },
+      })
+    );
 
     if (!isCorrect) {
       return jsonSuccess({
@@ -86,13 +92,15 @@ export async function POST(req: NextRequest) {
     }
 
     // Mark Location Step as Verified (currentStep = 1)
-    await prisma.teamProgress.update({
-      where: { teamId: session.teamId },
-      data: {
-        currentStep: 1,
-        lastActivityAt: new Date(),
-      },
-    });
+    await withRetry(() =>
+      prisma.teamProgress.update({
+        where: { teamId: session.teamId },
+        data: {
+          currentStep: 1,
+          lastActivityAt: new Date(),
+        },
+      })
+    );
 
     return jsonSuccess({
       isCorrect: true,

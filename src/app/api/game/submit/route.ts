@@ -41,14 +41,18 @@ export async function POST(req: NextRequest) {
     }
 
     // Fetch round config (team override or default)
-    let config = await prisma.roundConfig.findFirst({
-      where: { teamId: session.teamId, roundNumber },
-    });
+    let config = await withRetry(() =>
+      prisma.roundConfig.findFirst({
+        where: { teamId: session.teamId, roundNumber },
+      })
+    );
 
     if (!config) {
-      config = await prisma.roundConfig.findFirst({
-        where: { teamId: null, roundNumber },
-      });
+      config = await withRetry(() =>
+        prisma.roundConfig.findFirst({
+          where: { teamId: null, roundNumber },
+        })
+      );
     }
 
     if (!config) {
@@ -87,25 +91,29 @@ export async function POST(req: NextRequest) {
     const ipAddress = req.headers.get("x-forwarded-for") || "unknown";
     const requestId = crypto.randomUUID();
 
-    await prisma.submissionAttempt.create({
-      data: {
-        teamId: session.teamId,
-        roundNumber,
-        rawInput: answer || JSON.stringify(subAnswers),
-        isCorrect,
-        requestId,
-        ipAddress,
-      },
-    });
+    await withRetry(() =>
+      prisma.submissionAttempt.create({
+        data: {
+          teamId: session.teamId,
+          roundNumber,
+          rawInput: answer || JSON.stringify(subAnswers),
+          isCorrect,
+          requestId,
+          ipAddress,
+        },
+      })
+    );
 
     // Update attempts count
-    await prisma.teamProgress.update({
-      where: { teamId: session.teamId },
-      data: {
-        totalAttempts: { increment: 1 },
-        lastActivityAt: new Date(),
-      },
-    });
+    await withRetry(() =>
+      prisma.teamProgress.update({
+        where: { teamId: session.teamId },
+        data: {
+          totalAttempts: { increment: 1 },
+          lastActivityAt: new Date(),
+        },
+      })
+    );
 
     if (!isCorrect) {
       return jsonSuccess({

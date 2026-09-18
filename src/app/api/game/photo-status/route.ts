@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import prisma from "@/lib/db";
+import prisma, { withRetry } from "@/lib/db";
 import { getTeamFromRequest } from "@/lib/auth";
 import { jsonError, jsonSuccess } from "@/lib/security";
 
@@ -13,13 +13,15 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const roundNumber = Number(searchParams.get("roundNumber") || 2);
 
-    const submission = await prisma.photoSubmission.findFirst({
-      where: {
-        teamId: session.teamId,
-        roundNumber,
-      },
-      orderBy: { submittedAt: "desc" },
-    });
+    const submission = await withRetry(() =>
+      prisma.photoSubmission.findFirst({
+        where: {
+          teamId: session.teamId,
+          roundNumber,
+        },
+        orderBy: { submittedAt: "desc" },
+      })
+    );
 
     if (!submission) {
       return jsonSuccess({ hasSubmission: false });
