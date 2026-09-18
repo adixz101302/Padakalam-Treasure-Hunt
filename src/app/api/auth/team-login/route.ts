@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import prisma from "@/lib/db";
+import prisma, { withRetry } from "@/lib/db";
 import { signTeamToken, COOKIE_NAMES } from "@/lib/auth";
 import { logAuditEvent } from "@/lib/audit";
 import { jsonError, jsonSuccess } from "@/lib/security";
@@ -14,14 +14,16 @@ export async function POST(req: NextRequest) {
       return jsonError("Team ID is required.", 400);
     }
 
-    const team = await prisma.team.findUnique({
-      where: { teamId },
-      include: {
-        progress: true,
-        finalist: true,
-        winner: true,
-      },
-    });
+    const team = await withRetry(() =>
+      prisma.team.findUnique({
+        where: { teamId },
+        include: {
+          progress: true,
+          finalist: true,
+          winner: true,
+        },
+      })
+    );
 
     if (!team) {
       return jsonError("Invalid Team ID. Please check your credentials.", 401);

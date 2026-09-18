@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import prisma from "@/lib/db";
+import prisma, { withRetry } from "@/lib/db";
 import { getTeamFromRequest, getAdminFromRequest } from "@/lib/auth";
 import { jsonError, jsonSuccess } from "@/lib/security";
 
@@ -22,17 +22,21 @@ export async function GET(req: NextRequest) {
 
     // If team session exists, return team details
     if (teamSession) {
-      const team = await prisma.team.findUnique({
-        where: { teamId: teamSession.teamId },
-        include: {
-          progress: true,
-          finalist: true,
-          winner: true,
-        },
-      });
+      const [team, event] = await Promise.all([
+        withRetry(() =>
+          prisma.team.findUnique({
+            where: { teamId: teamSession.teamId },
+            include: {
+              progress: true,
+              finalist: true,
+              winner: true,
+            },
+          })
+        ),
+        withRetry(() => prisma.event.findFirst(), 2, 200),
+      ]);
 
       if (team) {
-        const event = await prisma.event.findFirst();
         return jsonSuccess({
           role: "team",
           team: {

@@ -144,6 +144,8 @@ export default function PlayPage() {
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
   const fetchPhotoStatus = useCallback(async () => {
+    // Random jitter 0-3s to prevent all Round 2 teams hitting simultaneously
+    await new Promise((r) => setTimeout(r, Math.floor(Math.random() * 3000)));
     try {
       const res = await fetch(`/api/game/photo-status?roundNumber=2&t=${Date.now()}`, {
         cache: "no-store",
@@ -365,6 +367,8 @@ export default function PlayPage() {
 
       if (data.roundNumber === 2) {
         setPhotoStatus((curr) => {
+          // Only fetch photo status if we don't have a final status yet (PENDING or unknown)
+          // This prevents 9 teams hammering the endpoint simultaneously on every poll
           if (!curr || curr.status === "PENDING") {
             fetchPhotoStatus();
           }
